@@ -14,9 +14,9 @@ const (
 )
 
 const (
-	base_time     int = 200
+	base_time     int = 250
 	range_time    int = 100
-	heart_timeout int = 100
+	heart_timeout int = 50
 )
 
 // without lock
@@ -25,12 +25,9 @@ func (rf *Raft) TurnTo(status ServerStatus) {
 	switch status {
 	case follower:
 		// fmt.Println(rf.me, " will be follower")
-		rf.votedFor = voted_nil
 		rf.status = follower
 	case candidate:
 		// fmt.Println(rf.me, " will be candidate")
-		rf.currentTerm++
-		rf.votedFor = rf.me
 		rf.status = candidate
 	case leader:
 		// fmt.Println(rf.me, " will be leader")

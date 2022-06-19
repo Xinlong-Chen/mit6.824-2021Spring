@@ -214,10 +214,17 @@ func (rf *Raft) ticker() {
 		case <-rf.electionTimer.C:
 			// fmt.Println(rf.me, " election timeout")
 			rf.mu.Lock()
-			if rf.status != leader {
+			if rf.status != leader { // If election timeout elapses: start new election
+				// On conversion to candidate, start election:
 				rf.TurnTo(candidate)
+				// • Increment currentTerm
+				rf.currentTerm++
+				// • Vote for self
+				rf.votedFor = rf.me
+				// • Send RequestVote RPCs to all other servers
 				rf.doElection()
 			}
+			// • Reset election timer
 			rf.electionTimer.Reset(rf.election_timeout())
 			rf.mu.Unlock()
 		case <-rf.heartTimer.C:
