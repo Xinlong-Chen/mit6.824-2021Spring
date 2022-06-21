@@ -74,7 +74,7 @@ type Raft struct {
 	// persistent for all servers
 	currentTerm int
 	votedFor    int
-	log         []byte
+	log         []Entry
 
 	// volatile for all servers
 	commitIndex int
@@ -173,17 +173,16 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	term, is_leader := rf.GetState()
-	if !is_leader {
-		return -1, term, false
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	if rf.status != leader {
+		return -1, -1, false
 	}
 
-	index := -1
-	isLeader := true
+	rf.log = append(rf.log, Entry{rf.currentTerm, command})
 
-	// Your code here (2B).
-
-	return index, term, isLeader
+	return len(rf.log) - 1, rf.currentTerm, true
 }
 
 //
@@ -216,15 +215,13 @@ func (rf *Raft) ticker() {
 		// time.Sleep().
 		select {
 		case <-rf.electionTimer.C:
-			// fmt.Println(rf.me, " election timeout")
 			rf.mu.Lock()
-			if rf.status != leader { // If election timeout elapses: start new election
+			Debug(dTimer, "S%d election timeout, status: %v", rf.me, rf.status)
+			if rf.status != leader {
+				// If election timeout elapses: start new election
 				// On conversion to candidate, start election:
 				rf.TurnTo(candidate)
-				// • Increment currentTerm
-				rf.currentTerm++
-				// • Vote for self
-				rf.votedFor = rf.me
+				Debug(dTimer, "S%d Start election, T%d", rf.me, rf.currentTerm)
 				// • Send RequestVote RPCs to all other servers
 				rf.doElection()
 			}
@@ -232,9 +229,9 @@ func (rf *Raft) ticker() {
 			rf.electionTimer.Reset(rf.election_timeout())
 			rf.mu.Unlock()
 		case <-rf.heartTimer.C:
-			// fmt.Println(rf.me, " heart timeout")
 			rf.mu.Lock()
 			if rf.status == leader {
+				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast", rf.me)
 				rf.doHeartBroadcast()
 			}
 			rf.heartTimer.Reset(rf.heart_timeout())
@@ -243,18 +240,30 @@ func (rf *Raft) ticker() {
 	}
 }
 
+func (rf *Raft) leaderInit() {
+	rf.nextIndex = make([]int, len(rf.peers))
+	rf.matchIndex = make([]int, len(rf.peers))
+
+	for i := range rf.nextIndex {
+		rf.nextIndex[i] = len(rf.log) + 1
+	}
+	for i := range rf.matchIndex {
+		rf.matchIndex[i] = 0
+	}
+}
+
 func (rf *Raft) init() {
 	rf.status = follower
 	// persistent for all servers
 	rf.currentTerm = 0
 	rf.votedFor = voted_nil // means that vote for nobody
-	rf.log = make([]byte, 0)
+	rf.log = make([]Entry, 1)
 	// volatile for all servers
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 	// volatile for leader
-	rf.nextIndex = make([]int, 0)
-	rf.matchIndex = make([]int, 0)
+	// rf.nextIndex = make([]int, 0)
+	// rf.matchIndex = make([]int, 0)
 	// private
 	rf.heartTimer = time.NewTimer(rf.heart_timeout())
 	rf.electionTimer = time.NewTimer(rf.election_timeout())
@@ -278,6 +287,8 @@ func Make(peers []*labrpc.ClientEnd, me int,
 		persister: persister,
 		me:        me,
 	}
+
+	Debug(dClient, "S%d Started", rf.me)
 
 	// Your initialization code here (2A, 2B, 2C).
 	rf.init()

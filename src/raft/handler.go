@@ -6,18 +6,21 @@ package raft
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	// fmt.Printf("vote request: term %d;  %d request to be voted\n", args.Term, args.CandidateId)
-
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+
+	Debug(dVote, "S%d C%d asking vote", rf.me, args.CandidateId)
 
 	if args.Term < rf.currentTerm { // ignore
 		// fmt.Println(rf.me, " ignore")
 		reply.VoteGranted = false
 		reply.Term = rf.currentTerm
+		Debug(dVote, "S%d Term is higher than C%d, refuse it", rf.me, args.CandidateId)
 		return
 	} else if args.Term > rf.currentTerm { // turn to follower
 		// If RPC request or response contains term T > currentTerm:
 		// set currentTerm = T, convert to follower (§5.1)
+		Debug(dVote, "S%d Term is lower than C%d, turn to follower && reset voted_for", rf.me, args.CandidateId)
 		rf.currentTerm, rf.votedFor = args.Term, voted_nil
 		rf.TurnTo(follower)
 		// can vote now
@@ -35,18 +38,22 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		//  prevent election timeouts (§5.2)
 		rf.electionTimer.Reset(rf.election_timeout())
 		// fmt.Printf("%d voted for %d\n", rf.me, args.CandidateId)
+		Debug(dVote, "S%d Granting Vote to S%d at T%d", rf.me, rf.votedFor, rf.currentTerm)
 		return
 	}
 	// have voted
 	// fmt.Println(rf.me, " haven't voted")
 	reply.VoteGranted = false
 	reply.Term = rf.currentTerm
+	Debug(dVote, "S%d Have voted to S%d at T%d, refuse S%d", rf.me, rf.votedFor, rf.currentTerm, args.CandidateId)
 	return
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+
+	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
 
 	if args.Term < rf.currentTerm { // leader out, refuse
 		reply.Term = rf.currentTerm

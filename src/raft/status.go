@@ -8,9 +8,9 @@ import (
 type ServerStatus string
 
 const (
-	follower  ServerStatus = "follower"
-	candidate ServerStatus = "candidate"
-	leader    ServerStatus = "leader"
+	follower  ServerStatus = "Follower"
+	candidate ServerStatus = "Candidate"
+	leader    ServerStatus = "Leader"
 )
 
 const (
@@ -22,16 +22,22 @@ const (
 // without lock
 // if have a new goroutine, must lock it !!!
 func (rf *Raft) TurnTo(status ServerStatus) {
+	defer Debug(dTrace, "S%d converting to %v in T(%d)", rf.me, rf.status, rf.currentTerm)
 	switch status {
 	case follower:
 		// fmt.Println(rf.me, " will be follower")
 		rf.status = follower
 	case candidate:
+		// • Increment currentTerm
+		rf.currentTerm++
+		// • Vote for self
+		rf.votedFor = rf.me
 		// fmt.Println(rf.me, " will be candidate")
 		rf.status = candidate
 	case leader:
 		// fmt.Println(rf.me, " will be leader")
 		rf.status = leader
+		rf.leaderInit()
 	}
 }
 
