@@ -27,7 +27,7 @@ func (rf *Raft) doElection() {
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
 
-			if rf.currentTerm != args.Term {
+			if rf.currentTerm != args.Term || rf.status != candidate {
 				// election timeout, re-election
 				// ignore it
 				return

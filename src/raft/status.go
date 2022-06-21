@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-type ServerStatus int
+type ServerStatus string
 
 const (
-	follower ServerStatus = iota
-	candidate
-	leader
+	follower  ServerStatus = "follower"
+	candidate ServerStatus = "candidate"
+	leader    ServerStatus = "leader"
 )
 
 const (

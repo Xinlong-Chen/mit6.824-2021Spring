@@ -24,6 +24,9 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	// log judge
+	// TODO
+	// RPC 实现了这样的限制：
+	// RPC 中包含了候选人的日志信息，然后投票人会拒绝掉那些日志没有自己新的投票请求。
 
 	if rf.votedFor == voted_nil || rf.votedFor == args.CandidateId { // haven't voted
 		rf.votedFor = args.CandidateId

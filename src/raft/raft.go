@@ -173,8 +173,12 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
+	term, is_leader := rf.GetState()
+	if !is_leader {
+		return -1, term, false
+	}
+
 	index := -1
-	term := -1
 	isLeader := true
 
 	// Your code here (2B).
