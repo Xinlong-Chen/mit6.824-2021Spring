@@ -14,6 +14,11 @@ const (
 )
 
 const (
+	// magic number
+	voted_nil int = -10086
+)
+
+const (
 	base_time     int = 250
 	range_time    int = 100
 	heart_timeout int = 50
@@ -25,19 +30,19 @@ func (rf *Raft) TurnTo(status ServerStatus) {
 	defer Debug(dTrace, "S%d converting to %v in T(%d)", rf.me, rf.status, rf.currentTerm)
 	switch status {
 	case follower:
-		// fmt.Println(rf.me, " will be follower")
 		rf.status = follower
 	case candidate:
 		// • Increment currentTerm
 		rf.currentTerm++
 		// • Vote for self
 		rf.votedFor = rf.me
-		// fmt.Println(rf.me, " will be candidate")
 		rf.status = candidate
 	case leader:
-		// fmt.Println(rf.me, " will be leader")
 		rf.status = leader
 		rf.leaderInit()
+		// Upon election: send initial empty AppendEntries RPCs (heartbeat) to each server;
+		// repeat during idle periods to prevent election timeouts (§5.2)
+		rf.doAppendEntries()
 	}
 }
 

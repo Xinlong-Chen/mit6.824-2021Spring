@@ -28,44 +28,18 @@ import (
 	"6.824/labrpc"
 )
 
-const (
-	// magic number
-	voted_nil int = -10086
-)
-
-//
-// as each Raft peer becomes aware that successive log entries are
-// committed, the peer should send an ApplyMsg to the service (or
-// tester) on the same server, via the applyCh passed to Make(). set
-// CommandValid to true to indicate that the ApplyMsg contains a newly
-// committed log entry.
-//
-// in part 2D you'll want to send other kinds of messages (e.g.,
-// snapshots) on the applyCh, but set CommandValid to false for these
-// other uses.
-//
-type ApplyMsg struct {
-	CommandValid bool
-	Command      interface{}
-	CommandIndex int
-
-	// For 2D:
-	SnapshotValid bool
-	Snapshot      []byte
-	SnapshotTerm  int
-	SnapshotIndex int
-}
-
 //
 // A Go object implementing a single Raft peer.
 //
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
+	mu        sync.Mutex // Lock to protect shared access to this peer's state
+	cond      *sync.Cond
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
 	status    ServerStatus
+	applyCh   chan ApplyMsg
 
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
@@ -177,12 +151,13 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	defer rf.mu.Unlock()
 
 	if rf.status != leader {
+		Debug(dClient, "S%d Not leader cmd: %+v", rf.me, command)
 		return -1, -1, false
 	}
 
 	rf.log = append(rf.log, Entry{rf.currentTerm, command})
-
-	return len(rf.log) - 1, rf.currentTerm, true
+	Debug(dClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
+	return rf.lastLogIndex(), rf.currentTerm, true
 }
 
 //
@@ -216,12 +191,11 @@ func (rf *Raft) ticker() {
 		select {
 		case <-rf.electionTimer.C:
 			rf.mu.Lock()
-			Debug(dTimer, "S%d election timeout, status: %v", rf.me, rf.status)
 			if rf.status != leader {
 				// If election timeout elapses: start new election
 				// On conversion to candidate, start election:
 				rf.TurnTo(candidate)
-				Debug(dTimer, "S%d Start election, T%d", rf.me, rf.currentTerm)
+				Debug(dTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
 				// • Send RequestVote RPCs to all other servers
 				rf.doElection()
 			}
@@ -231,8 +205,8 @@ func (rf *Raft) ticker() {
 		case <-rf.heartTimer.C:
 			rf.mu.Lock()
 			if rf.status == leader {
-				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast", rf.me)
-				rf.doHeartBroadcast()
+				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
+				rf.doAppendEntries()
 			}
 			rf.heartTimer.Reset(rf.heart_timeout())
 			rf.mu.Unlock()
@@ -245,7 +219,7 @@ func (rf *Raft) leaderInit() {
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	for i := range rf.nextIndex {
-		rf.nextIndex[i] = len(rf.log) + 1
+		rf.nextIndex[i] = len(rf.log)
 	}
 	for i := range rf.matchIndex {
 		rf.matchIndex[i] = 0
@@ -254,6 +228,7 @@ func (rf *Raft) leaderInit() {
 
 func (rf *Raft) init() {
 	rf.status = follower
+	rf.cond = sync.NewCond(&rf.mu)
 	// persistent for all servers
 	rf.currentTerm = 0
 	rf.votedFor = voted_nil // means that vote for nobody
@@ -286,6 +261,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 		peers:     peers,
 		persister: persister,
 		me:        me,
+		applyCh:   applyCh,
 	}
 
 	Debug(dClient, "S%d Started", rf.me)
