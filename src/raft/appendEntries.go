@@ -1,6 +1,11 @@
 package raft
 
-func (rf *Raft) doAppendEntries() {
+const (
+	magic_index int = -12345
+	magic_term  int = -10001
+)
+
+func (rf *Raft) doAppendEntries(emptyHeartbeat bool) {
 	for i := 0; i < len(rf.peers); i++ {
 		if i == rf.me {
 			continue
@@ -9,16 +14,21 @@ func (rf *Raft) doAppendEntries() {
 			reply := AppendEntriesReply{}
 			rf.mu.Lock()
 			args := AppendEntriesArgs{
-				Term:     rf.currentTerm,
-				LeaderId: rf.me,
+				Term:         rf.currentTerm,
+				LeaderId:     rf.me,
+				PrevLogIndex: magic_index,
+				PrevLogTerm:  magic_term,
 			}
-			args.PrevLogIndex = rf.nextIndex[i] - 1
-			args.PrevLogTerm = rf.log[args.PrevLogIndex].Term
-			args.LeaderCommit = rf.commitIndex
-			// must copy in here
-			entries := rf.log[rf.nextIndex[i]:]
-			args.Entries = make([]Entry, len(entries))
-			copy(args.Entries, entries)
+
+			if !emptyHeartbeat {
+				args.PrevLogIndex = rf.nextIndex[i] - 1
+				args.PrevLogTerm = rf.log[args.PrevLogIndex].Term
+				args.LeaderCommit = rf.commitIndex
+				// must copy in here
+				entries := rf.log[rf.nextIndex[i]:]
+				args.Entries = make([]Entry, len(entries))
+				copy(args.Entries, entries)
+			}
 			rf.mu.Unlock()
 
 			Debug(dTrace, "S%d send request {%+v}", rf.me, args)
@@ -54,6 +64,10 @@ func (rf *Raft) doAppendEntries() {
 			} else {
 				// TODO: implement it
 				rf.nextIndex[i]--
+				if rf.nextIndex[i] < 1 {
+					rf.nextIndex[i] = 1
+					rf.matchIndex[i] = rf.nextIndex[i] - 1
+				}
 			}
 		}(i)
 	}

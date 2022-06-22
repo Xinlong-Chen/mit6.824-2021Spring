@@ -9,7 +9,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term < rf.currentTerm { // leader out, refuse
 		reply.Term = rf.currentTerm
 		reply.Success = false
-		Debug(dLog, "S%d S%d term less(%d < %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
+		Debug(dTerm, "S%d S%d term less(%d < %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
 		return
 	} else if args.Term > rf.currentTerm { // turn to follower
 		// If RPC request or response contains term T > currentTerm:
@@ -28,26 +28,20 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	//  prevent election timeouts (§5.2)
 	rf.electionTimer.Reset(rf.election_timeout())
 
+	if args.PrevLogIndex == magic_index && args.PrevLogTerm == magic_term {
+		return
+	}
+
 	// attention: must delete overdue data first
 	if args.PrevLogIndex > rf.lastLogIndex() || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 		reply.Success = false
 		return
 	}
 
-	base_index := args.PrevLogIndex + 1
-	ago_len := len(rf.log)
-	for i, entry := range args.Entries {
-		// if rf.log[base_index + i].term !=
-		if base_index+i < ago_len {
-			if rf.log[base_index+i].Term != entry.Term {
-				rf.log[base_index+i] = entry
-			} else {
-				continue
-			}
-		} else {
-			rf.log = append(rf.log, entry)
-		}
-	}
+	Debug(dLog2, "S%d before: log: %+v", rf.me, rf.log)
+	rf.log = rf.log[:args.PrevLogIndex+1]
+	rf.log = append(rf.log, args.Entries...)
+	Debug(dLog2, "S%d after append: log: %+v", rf.me, rf.log)
 
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = args.LeaderCommit

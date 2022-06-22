@@ -157,6 +157,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 
 	rf.log = append(rf.log, Entry{rf.currentTerm, command})
 	Debug(dClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
+	Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
 	return rf.lastLogIndex(), rf.currentTerm, true
 }
 
@@ -206,7 +207,7 @@ func (rf *Raft) ticker() {
 			rf.mu.Lock()
 			if rf.status == leader {
 				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
-				rf.doAppendEntries()
+				rf.doAppendEntries(false)
 			}
 			rf.heartTimer.Reset(rf.heart_timeout())
 			rf.mu.Unlock()
@@ -232,7 +233,8 @@ func (rf *Raft) init() {
 	// persistent for all servers
 	rf.currentTerm = 0
 	rf.votedFor = voted_nil // means that vote for nobody
-	rf.log = make([]Entry, 1)
+	rf.log = make([]Entry, 0)
+	rf.log = append(rf.log, Entry{magic_term, ""})
 	// volatile for all servers
 	rf.commitIndex = 0
 	rf.lastApplied = 0
