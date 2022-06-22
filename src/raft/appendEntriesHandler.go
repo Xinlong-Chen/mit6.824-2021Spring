@@ -28,18 +28,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	//  prevent election timeouts (§5.2)
 	rf.electionTimer.Reset(rf.election_timeout())
 
-	// TODO
-	// implement log append
-
-	if args.LeaderCommit > rf.commitIndex {
-		rf.commitIndex = args.LeaderCommit
-		if args.LeaderCommit > rf.lastLogIndex() {
-			rf.commitIndex = rf.lastLogIndex()
-		}
-		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
-		go rf.applyLog()
-	}
-
+	// attention: must delete overdue data first
 	if args.PrevLogIndex > rf.lastLogIndex() || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
 		reply.Success = false
 		return
@@ -58,6 +47,15 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		} else {
 			rf.log = append(rf.log, entry)
 		}
+	}
+
+	if args.LeaderCommit > rf.commitIndex {
+		rf.commitIndex = args.LeaderCommit
+		if args.LeaderCommit > rf.lastLogIndex() {
+			rf.commitIndex = rf.lastLogIndex()
+		}
+		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
+		go rf.applyLog()
 	}
 	Debug(dCommit, "S%d log len %v", rf.me, len(rf.log))
 }

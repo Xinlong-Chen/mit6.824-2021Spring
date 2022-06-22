@@ -27,7 +27,6 @@ type ApplyMsg struct {
 func (rf *Raft) applyLog() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	Debug(dCommit, "S%d apply from %v to %v", rf.me, rf.lastApplied+1, rf.commitIndex)
 	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
 		rf.applyCh <- ApplyMsg{
 			CommandValid: true,
@@ -35,5 +34,6 @@ func (rf *Raft) applyLog() {
 			CommandIndex: i,
 		}
 		rf.lastApplied = i
+		Debug(dCommit, "S%d apply %v", rf.me, rf.lastApplied)
 	}
 }

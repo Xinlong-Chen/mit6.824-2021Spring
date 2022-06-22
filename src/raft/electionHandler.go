@@ -26,12 +26,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		// can vote now
 	}
 
-	// log judge
-	// TODO
-	// RPC 实现了这样的限制：
-	// RPC 中包含了候选人的日志信息，然后投票人会拒绝掉那些日志没有自己新的投票请求。
-
 	if rf.votedFor == voted_nil || rf.votedFor == args.CandidateId { // haven't voted
+		// log judge
 		if !rf.isUpToDate(args.LastLogIndex, args.LastLogTerm) {
 			Debug(dVote, "S%d C%d not uo-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.log[rf.lastLogIndex()].Term)
 			reply.VoteGranted, reply.Term = false, rf.currentTerm

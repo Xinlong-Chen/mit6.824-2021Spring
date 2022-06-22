@@ -19,7 +19,7 @@ func (rf *Raft) isUpToDate(lastLogIndex int, lastLogTerm int) bool {
 }
 
 func (rf *Raft) toCommit() {
-	for i := rf.lastLogIndex(); i >= rf.commitIndex; i-- {
+	for i := rf.lastLogIndex(); i > rf.commitIndex; i-- {
 		if rf.log[i].Term != rf.currentTerm {
 			return
 		}
