@@ -52,6 +52,8 @@ func (rf *Raft) doAppendEntries() {
 				Debug(dTrace, "S%d nextindex {%+v}, match {%+v}", rf.me, rf.nextIndex, rf.matchIndex)
 				rf.toCommit()
 			} else {
+				// TODO: implement it
+				rf.nextIndex[i]--
 			}
 		}(i)
 	}

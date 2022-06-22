@@ -8,8 +8,8 @@ func (rf *Raft) doElection() {
 	args := RequestVoteArgs{
 		Term:         rf.currentTerm,
 		CandidateId:  rf.me,
-		LastLogIndex: 0,
-		LastLogTerm:  0,
+		LastLogIndex: rf.lastLogIndex(),
+		LastLogTerm:  rf.log[rf.lastLogIndex()].Term,
 	}
 
 	for i := 0; i < len(rf.peers); i++ {
