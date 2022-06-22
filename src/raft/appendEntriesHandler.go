@@ -23,18 +23,39 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		// convert to follower
 		rf.TurnTo(follower)
 	}
+
 	reply.Success = true
 	reply.Term = rf.currentTerm
 	//  prevent election timeouts (§5.2)
 	rf.electionTimer.Reset(rf.election_timeout())
 
+	// heartbeat, return
 	if args.PrevLogIndex == magic_index && args.PrevLogTerm == magic_term {
 		return
 	}
 
 	// attention: must delete overdue data first
-	if args.PrevLogIndex > rf.lastLogIndex() || rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+	if args.PrevLogIndex > rf.lastLogIndex() {
 		reply.Success = false
+		reply.XTerm = -1
+		reply.XLen = args.PrevLogIndex - rf.lastLogIndex()
+		Debug(dTrace, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
+		return
+	}
+
+	if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
+		reply.Success = false
+		reply.XTerm = rf.log[args.PrevLogIndex].Term
+		reply.XIndex = args.PrevLogIndex
+		// 0 is a dummy entry => quit in index is 1
+		// binary search is better than this way
+		for index := args.PrevLogIndex; index >= 1; index-- {
+			if rf.log[index-1].Term != reply.XTerm {
+				reply.XIndex = index
+				break
+			}
+		}
+		Debug(dTrace, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
 		return
 	}
 
@@ -51,5 +72,4 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
 		go rf.applyLog()
 	}
-	Debug(dCommit, "S%d log len %v", rf.me, len(rf.log))
 }

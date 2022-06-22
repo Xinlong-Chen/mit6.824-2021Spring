@@ -34,6 +34,10 @@ type RequestVoteReply struct {
 type AppendEntriesReply struct {
 	Term    int
 	Success bool
+	// for fast backup
+	XTerm  int
+	XIndex int
+	XLen   int
 }
 
 //

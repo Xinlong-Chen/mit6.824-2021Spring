@@ -31,13 +31,13 @@ func (rf *Raft) doAppendEntries(emptyHeartbeat bool) {
 			}
 			rf.mu.Unlock()
 
-			Debug(dTrace, "S%d send request {%+v}", rf.me, args)
+			Debug(dTrace, "S%d send request {%+v} to %d", rf.me, args, i)
 			ok := rf.sendAppendEntries(i, &args, &reply)
 			if !ok {
 				Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, i)
 				return
 			}
-			Debug(dTrace, "S%d get response {%+v}", rf.me, reply)
+			Debug(dTrace, "S%d get response {%+v} from %d", rf.me, reply, i)
 
 			rf.mu.Lock()
 			defer rf.mu.Unlock()
@@ -56,18 +56,45 @@ func (rf *Raft) doAppendEntries(emptyHeartbeat bool) {
 				return
 			}
 
+			// heartbeat, ignore
+			if emptyHeartbeat {
+				return
+			}
+
 			if reply.Success {
 				rf.nextIndex[i] += len(args.Entries)
 				rf.matchIndex[i] = rf.nextIndex[i] - 1
 				Debug(dTrace, "S%d nextindex {%+v}, match {%+v}", rf.me, rf.nextIndex, rf.matchIndex)
 				rf.toCommit()
-			} else {
-				// TODO: implement it
-				rf.nextIndex[i]--
-				if rf.nextIndex[i] < 1 {
-					rf.nextIndex[i] = 1
-					rf.matchIndex[i] = rf.nextIndex[i] - 1
+				return
+			}
+
+			// TODO: implement it
+			if reply.XTerm != -1 {
+				termNotExit := true
+				for index := rf.nextIndex[i] - 1; index >= 1; index-- {
+					if rf.log[index].Term == reply.XTerm {
+						rf.nextIndex[i] = index
+						termNotExit = false
+						Debug(dTrace, "S%d from %d---exit term: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
+						break
+					} else if rf.log[index].Term < reply.XTerm {
+						break
+					}
 				}
+				if termNotExit {
+					rf.nextIndex[i] = reply.XIndex
+					Debug(dTrace, "S%d from %d+++not exit term: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
+				}
+			} else { // null slot
+				rf.nextIndex[i] -= reply.XLen
+				Debug(dTrace, "S%d from %d***null slot: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
+			}
+
+			// the smallest nextIndex is 1
+			// otherwise, it will cause out of range error
+			if rf.nextIndex[i] < 1 {
+				rf.nextIndex[i] = 1
 			}
 		}(i)
 	}
