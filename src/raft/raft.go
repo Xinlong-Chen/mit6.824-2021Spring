@@ -156,8 +156,9 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	}
 
 	rf.log = append(rf.log, Entry{rf.currentTerm, command})
+	defer Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
 	Debug(dClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
-	Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
+
 	return rf.lastLogIndex(), rf.currentTerm, true
 }
 

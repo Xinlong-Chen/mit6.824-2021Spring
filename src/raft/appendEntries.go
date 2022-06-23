@@ -40,13 +40,10 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	rf.mu.Unlock()
 	reply := AppendEntriesReply{}
 
-	Debug(dTrace, "S%d send request {%+v} to %d", rf.me, args, i)
 	ok := rf.sendAppendEntries(i, &args, &reply)
 	if !ok {
-		Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, i)
 		return
 	}
-	Debug(dTrace, "S%d get response {%+v} from %d", rf.me, reply, i)
 
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
@@ -60,6 +57,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	// If RPC request or response contains term T > currentTerm:
 	// set currentTerm = T, convert to follower (§5.1)
 	if reply.Term > rf.currentTerm {
+		Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
 		rf.currentTerm, rf.votedFor = reply.Term, voted_nil
 		rf.TurnTo(follower)
 		return
@@ -73,19 +71,16 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	if reply.Success {
 		rf.nextIndex[i] += len(args.Entries)
 		rf.matchIndex[i] = args.PrevLogIndex + len(args.Entries)
-		Debug(dTrace, "S%d nextindex {%+v}, match {%+v}", rf.me, rf.nextIndex, rf.matchIndex)
 		rf.toCommit()
 		return
 	}
 
-	// TODO: implement it
 	if reply.XTerm != -1 {
 		termNotExit := true
-		for index := rf.lastLogIndex(); index >= 1; index-- {
+		for index := rf.nextIndex[i] - 1; index >= 1; index-- {
 			if rf.log[index].Term == reply.XTerm {
 				rf.nextIndex[i] = index + 1
 				termNotExit = false
-				Debug(dTrace, "S%d from %d---exit term: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
 				break
 			} else if rf.log[index].Term < reply.XTerm {
 				break
@@ -93,11 +88,9 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 		}
 		if termNotExit {
 			rf.nextIndex[i] = reply.XIndex
-			Debug(dTrace, "S%d from %d+++not exit term: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
 		}
 	} else { // null slot
 		rf.nextIndex[i] -= reply.XLen
-		Debug(dTrace, "S%d from %d***null slot: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
 	}
 
 	// the smallest nextIndex is 1

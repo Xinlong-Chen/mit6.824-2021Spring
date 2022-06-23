@@ -12,16 +12,17 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	Debug(dVote, "S%d C%d asking vote", rf.me, args.CandidateId)
 
 	if args.Term < rf.currentTerm { // ignore
-		// fmt.Println(rf.me, " ignore")
 		reply.VoteGranted = false
 		reply.Term = rf.currentTerm
 		Debug(dVote, "S%d Term is higher than C%d, refuse it", rf.me, args.CandidateId)
 		return
-	} else if args.Term > rf.currentTerm { // turn to follower
+	}
+
+	if args.Term > rf.currentTerm {
 		// If RPC request or response contains term T > currentTerm:
 		// set currentTerm = T, convert to follower (§5.1)
-		Debug(dVote, "S%d Term is lower than C%d, turn to follower && reset voted_for", rf.me, args.CandidateId)
 		rf.currentTerm, rf.votedFor = args.Term, voted_nil
+		Debug(dVote, "S%d Term is lower than C%d, turn to follower && reset voted_for", rf.me, args.CandidateId)
 		rf.TurnTo(follower)
 		// can vote now
 	}
@@ -29,8 +30,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	if rf.votedFor == voted_nil || rf.votedFor == args.CandidateId { // haven't voted
 		// log judge
 		if !rf.isUpToDate(args.LastLogIndex, args.LastLogTerm) {
-			Debug(dVote, "S%d C%d not uo-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.log[rf.lastLogIndex()].Term)
 			reply.VoteGranted, reply.Term = false, rf.currentTerm
+			Debug(dVote, "S%d C%d not uo-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.log[rf.lastLogIndex()].Term)
 			return
 		}
 		rf.votedFor = args.CandidateId

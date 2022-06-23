@@ -5,16 +5,20 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer rf.mu.Unlock()
 
 	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
+	defer Debug(dLog, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
 
 	if args.Term < rf.currentTerm { // leader out, refuse
 		reply.Term = rf.currentTerm
 		reply.Success = false
 		Debug(dTerm, "S%d S%d term less(%d < %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
 		return
-	} else if args.Term > rf.currentTerm { // turn to follower
+	}
+
+	if args.Term > rf.currentTerm {
 		// If RPC request or response contains term T > currentTerm:
 		// set currentTerm = T, convert to follower (§5.1)
 		rf.currentTerm, rf.votedFor = args.Term, voted_nil
+		Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
 		rf.TurnTo(follower)
 	}
 
@@ -39,7 +43,6 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		reply.Success = false
 		reply.XTerm = -1
 		reply.XLen = args.PrevLogIndex - rf.lastLogIndex()
-		Debug(dTrace, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
 		return
 	}
 
@@ -55,11 +58,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 				break
 			}
 		}
-		Debug(dTrace, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
 		return
 	}
 
-	Debug(dLog2, "S%d before: log: %+v", rf.me, rf.log)
+	Debug(dInfo, "S%d before: log: %+v", rf.me, rf.log)
 	origin_end, add_begin := args.PrevLogIndex+1, 0
 	for ; origin_end <= rf.lastLogIndex() && add_begin < len(args.Entries); origin_end, add_begin = origin_end+1, add_begin+1 {
 		if rf.log[origin_end].Term != args.Entries[add_begin].Term {
@@ -68,7 +70,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 	rf.log = rf.log[:origin_end]
 	rf.log = append(rf.log, args.Entries[add_begin:]...)
-	Debug(dLog2, "S%d after append: log: %+v", rf.me, rf.log)
+	Debug(dInfo, "S%d after append: log: %+v", rf.me, rf.log)
 
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = args.LeaderCommit

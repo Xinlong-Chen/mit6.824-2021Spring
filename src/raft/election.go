@@ -20,7 +20,6 @@ func (rf *Raft) doElection() {
 			reply := RequestVoteReply{}
 			ok := rf.sendRequestVote(i, &args, &reply)
 			if !ok {
-				// fmt.Println(rf.me, "not ok")
 				return
 			}
 
@@ -36,8 +35,8 @@ func (rf *Raft) doElection() {
 			// If RPC request or response contains term T > currentTerm:
 			// set currentTerm = T, convert to follower (§5.1)
 			if reply.Term > rf.currentTerm {
+				Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
 				// turn to follower
-				// fmt.Println(rf.me, " will be follow, vote fail")
 				rf.currentTerm, rf.votedFor = reply.Term, voted_nil
 				rf.TurnTo(follower)
 				return

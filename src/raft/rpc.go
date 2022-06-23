@@ -70,11 +70,21 @@ type AppendEntriesReply struct {
 // the struct itself.
 //
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
+	Debug(dInfo, "S%d send request to %d {%+v}", rf.me, args, server)
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
+	if !ok {
+		Debug(dWarn, "S%d call (RequestVote)rpc to C%d error", rf.me, server)
+	}
+	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, reply, server)
 	return ok
 }
 
 func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
+	Debug(dInfo, "S%d send request to %d {%+v}", rf.me, args, server)
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
+	if !ok {
+		Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, server)
+	}
+	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, reply, server)
 	return ok
 }
