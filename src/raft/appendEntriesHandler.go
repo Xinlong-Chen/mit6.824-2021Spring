@@ -60,8 +60,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	Debug(dLog2, "S%d before: log: %+v", rf.me, rf.log)
-	rf.log = rf.log[:args.PrevLogIndex+1]
-	rf.log = append(rf.log, args.Entries...)
+	origin_end, add_begin := args.PrevLogIndex+1, 0
+	for ; origin_end <= rf.lastLogIndex() && add_begin < len(args.Entries); origin_end, add_begin = origin_end+1, add_begin+1 {
+		if rf.log[origin_end].Term != args.Entries[add_begin].Term {
+			break
+		}
+	}
+	rf.log = rf.log[:origin_end]
+	rf.log = append(rf.log, args.Entries[add_begin:]...)
 	Debug(dLog2, "S%d after append: log: %+v", rf.me, rf.log)
 
 	if args.LeaderCommit > rf.commitIndex {
