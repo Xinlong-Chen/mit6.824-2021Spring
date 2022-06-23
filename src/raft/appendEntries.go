@@ -15,8 +15,12 @@ func (rf *Raft) doAppendEntries(emptyHeartbeat bool) {
 }
 
 func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
-	reply := AppendEntriesReply{}
 	rf.mu.Lock()
+	if rf.status != leader {
+		Debug(dWarn, "S%d status change, it is not leader", rf.me)
+		rf.mu.Unlock()
+		return
+	}
 	args := AppendEntriesArgs{
 		Term:         rf.currentTerm,
 		LeaderId:     rf.me,
@@ -34,6 +38,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 		copy(args.Entries, entries)
 	}
 	rf.mu.Unlock()
+	reply := AppendEntriesReply{}
 
 	Debug(dTrace, "S%d send request {%+v} to %d", rf.me, args, i)
 	ok := rf.sendAppendEntries(i, &args, &reply)
@@ -61,7 +66,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	}
 
 	// heartbeat, ignore
-	if emptyHeartbeat {
+	if emptyHeartbeat || rf.status != leader {
 		return
 	}
 
@@ -78,7 +83,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 		termNotExit := true
 		for index := rf.lastLogIndex(); index >= 1; index-- {
 			if rf.log[index].Term == reply.XTerm {
-				rf.nextIndex[i] = index
+				rf.nextIndex[i] = index + 1
 				termNotExit = false
 				Debug(dTrace, "S%d from %d---exit term: nextIndex %+v {log: %+v}", rf.me, i, rf.nextIndex, rf.log)
 				break
