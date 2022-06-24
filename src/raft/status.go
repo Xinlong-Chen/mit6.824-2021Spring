@@ -36,6 +36,7 @@ func (rf *Raft) TurnTo(status ServerStatus) {
 		rf.currentTerm++
 		// • Vote for self
 		rf.votedFor = rf.me
+		rf.persist()
 		rf.status = candidate
 		Debug(dTerm, "S%d converting to %v in T(%d)", rf.me, rf.status, rf.currentTerm)
 	case leader:

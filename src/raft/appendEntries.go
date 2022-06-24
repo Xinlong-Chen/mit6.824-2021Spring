@@ -29,6 +29,9 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	}
 
 	if !emptyHeartbeat {
+		if rf.nextIndex[i] > len(rf.log) {
+			rf.nextIndex[i] = len(rf.log)
+		}
 		args.PrevLogIndex = rf.nextIndex[i] - 1
 		args.PrevLogTerm = rf.log[args.PrevLogIndex].Term
 		args.LeaderCommit = rf.commitIndex
@@ -59,6 +62,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	if reply.Term > rf.currentTerm {
 		Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
 		rf.currentTerm, rf.votedFor = reply.Term, voted_nil
+		rf.persist()
 		rf.TurnTo(follower)
 		return
 	}
@@ -78,6 +82,9 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 	if reply.XTerm != -1 {
 		termNotExit := true
 		for index := rf.nextIndex[i] - 1; index >= 1; index-- {
+			if index > rf.lastLogIndex() || rf.log[index].Term > reply.XTerm {
+				continue
+			}
 			if rf.log[index].Term == reply.XTerm {
 				rf.nextIndex[i] = index + 1
 				termNotExit = false

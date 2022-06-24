@@ -18,13 +18,12 @@ package raft
 //
 
 import (
-	"time"
-
-	//	"bytes"
+	"bytes"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	//	"6.824/labgob"
+	"6.824/labgob"
 	"6.824/labrpc"
 )
 
@@ -81,13 +80,16 @@ func (rf *Raft) GetState() (int, bool) {
 //
 func (rf *Raft) persist() {
 	// Your code here (2C).
-	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	if e.Encode(rf.log) != nil ||
+		e.Encode(rf.currentTerm) != nil ||
+		e.Encode(rf.votedFor) != nil {
+		Debug(dError, "S%d encode fail", rf.me)
+		return
+	}
+	data := w.Bytes()
+	rf.persister.SaveRaftState(data)
 }
 
 //
@@ -98,18 +100,23 @@ func (rf *Raft) readPersist(data []byte) {
 		return
 	}
 	// Your code here (2C).
-	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+
+	var log []Entry
+	var currentTerm, votedFor int
+
+	if d.Decode(&log) != nil ||
+		d.Decode(&currentTerm) != nil ||
+		d.Decode(&votedFor) != nil {
+		Debug(dError, "S%d dncode fail", rf.me)
+		return
+	}
+
+	rf.log = make([]Entry, len(log))
+	copy(rf.log, log)
+	rf.currentTerm = currentTerm
+	rf.votedFor = votedFor
 }
 
 //
@@ -156,6 +163,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	}
 
 	rf.log = append(rf.log, Entry{rf.currentTerm, command})
+	rf.persist()
+
 	defer Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
 	Debug(dClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
 

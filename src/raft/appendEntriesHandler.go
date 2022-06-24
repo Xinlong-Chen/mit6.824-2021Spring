@@ -4,6 +4,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
+	defer rf.persist()
+
 	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
 	defer Debug(dLog, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
 

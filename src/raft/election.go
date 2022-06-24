@@ -38,6 +38,7 @@ func (rf *Raft) doElection() {
 				Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
 				// turn to follower
 				rf.currentTerm, rf.votedFor = reply.Term, voted_nil
+				rf.persist()
 				rf.TurnTo(follower)
 				return
 			}

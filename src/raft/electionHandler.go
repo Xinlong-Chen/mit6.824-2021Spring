@@ -8,6 +8,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// fmt.Printf("vote request: term %d;  %d request to be voted\n", args.Term, args.CandidateId)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+	
+	defer rf.persist()
 
 	Debug(dVote, "S%d C%d asking vote", rf.me, args.CandidateId)
 

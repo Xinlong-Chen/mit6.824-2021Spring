@@ -75,7 +75,7 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	if !ok {
 		Debug(dWarn, "S%d call (RequestVote)rpc to C%d error", rf.me, server)
 	}
-	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, reply, server)
+	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
 	return ok
 }
 
@@ -85,6 +85,6 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 	if !ok {
 		Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, server)
 	}
-	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, reply, server)
+	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
 	return ok
 }
