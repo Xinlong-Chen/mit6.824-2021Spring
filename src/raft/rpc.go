@@ -34,10 +34,9 @@ type RequestVoteReply struct {
 type AppendEntriesReply struct {
 	Term    int
 	Success bool
-	// for fast backup
-	XTerm  int
-	XIndex int
-	XLen   int
+	XTerm   int // for fast backup
+	XIndex  int
+	XLen    int
 }
 
 //
@@ -74,6 +73,7 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	if !ok {
 		Debug(dWarn, "S%d call (RequestVote)rpc to C%d error", rf.me, server)
+		return ok
 	}
 	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
 	return ok
@@ -84,6 +84,7 @@ func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *Ap
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 	if !ok {
 		Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, server)
+		return ok
 	}
 	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
 	return ok

@@ -1,17 +1,15 @@
 package raft
 
-//
-// example RequestVote RPC handler.
-//
+// handler need to require lock
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	// fmt.Printf("vote request: term %d;  %d request to be voted\n", args.Term, args.CandidateId)
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	
-	defer rf.persist()
 
 	Debug(dVote, "S%d C%d asking vote", rf.me, args.CandidateId)
+
+	defer rf.persist()
 
 	if args.Term < rf.currentTerm { // ignore
 		reply.VoteGranted = false
@@ -36,17 +34,17 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 			Debug(dVote, "S%d C%d not uo-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.log[rf.lastLogIndex()].Term)
 			return
 		}
+
 		rf.votedFor = args.CandidateId
 		reply.VoteGranted = true
 		reply.Term = rf.currentTerm
 		//  prevent election timeouts (§5.2)
-		rf.resetElectionTime()
-		// fmt.Printf("%d voted for %d\n", rf.me, args.CandidateId)
 		Debug(dVote, "S%d Granting Vote to S%d at T%d", rf.me, rf.votedFor, rf.currentTerm)
+		rf.resetElectionTime()
 		return
 	}
+
 	// have voted
-	// fmt.Println(rf.me, " haven't voted")
 	reply.VoteGranted = false
 	reply.Term = rf.currentTerm
 	Debug(dVote, "S%d Have voted to S%d at T%d, refuse S%d", rf.me, rf.votedFor, rf.currentTerm, args.CandidateId)

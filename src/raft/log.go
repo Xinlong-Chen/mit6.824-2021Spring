@@ -37,5 +37,6 @@ func (rf *Raft) toCommit() {
 			}
 		}
 	}
+
 	Debug(dCommit, "S%d don't have half replicated from %v to %v", rf.me, rf.commitIndex, rf.lastLogIndex())
 }

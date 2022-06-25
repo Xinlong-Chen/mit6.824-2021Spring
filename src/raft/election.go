@@ -5,11 +5,9 @@ const (
 	voted_nil int = -10086
 )
 
+// ticker() call doElection(), ticker() hold lock
 func (rf *Raft) doElection() {
 	votedcount := 1
-	// not another goroutine, needn't lock it
-	// might timeout,
-	// then lead to send different term vote request
 	args := RequestVoteArgs{
 		Term:         rf.currentTerm,
 		CandidateId:  rf.me,
@@ -21,6 +19,7 @@ func (rf *Raft) doElection() {
 		if i == rf.me {
 			continue
 		}
+
 		go func(i int) {
 			reply := RequestVoteReply{}
 			ok := rf.sendRequestVote(i, &args, &reply)

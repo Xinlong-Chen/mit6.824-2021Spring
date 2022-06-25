@@ -1,13 +1,14 @@
 package raft
 
+// handler need to require lock
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	defer rf.persist()
-
 	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
 	defer Debug(dLog, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
+
+	defer rf.persist()
 
 	if args.Term < rf.currentTerm { // leader out, refuse
 		reply.Term = rf.currentTerm
@@ -65,7 +66,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	if args.Entries != nil && len(args.Entries) != 0 {
 		if rf.isConflict(args.Entries) {
-			rf.log = rf.log[:args.PrevLogIndex + 1]
+			rf.log = rf.log[:args.PrevLogIndex+1]
 			entries := make([]Entry, len(args.Entries))
 			copy(entries, args.Entries)
 			rf.log = append(rf.log, entries...)

@@ -24,9 +24,11 @@ type ApplyMsg struct {
 }
 
 // a new goroutine to run it
+// need acquire lock
 func (rf *Raft) applyLog() {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+
 	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
 		rf.applyCh <- ApplyMsg{
 			CommandValid: true,

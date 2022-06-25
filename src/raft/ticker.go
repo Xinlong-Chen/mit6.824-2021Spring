@@ -1,8 +1,8 @@
 package raft
 
 import (
-	"time"
 	"math/rand"
+	"time"
 )
 
 const (
@@ -22,11 +22,11 @@ func (rf *Raft) heartbeatTimeout() bool {
 
 func (rf *Raft) resetElectionTime() {
 	sleep_time := rand.Intn(election_range_time) + election_base_time
-	rf.electionTime = time.Now().Add(time.Millisecond * time.Duration(sleep_time))
+	rf.electionTime = time.Now().Add(time.Duration(sleep_time) * time.Millisecond)
 }
 
 func (rf *Raft) resetHeartbeatTime() {
-	rf.heartbeatTime = time.Now().Add(time.Millisecond * time.Duration(heartbeat_time))
+	rf.heartbeatTime = time.Now().Add(time.Duration(heartbeat_time) * time.Millisecond)
 }
 
 // The ticker go routine starts a new election if this peer hasn't received
@@ -40,8 +40,8 @@ func (rf *Raft) ticker() {
 		switch rf.status {
 		case follower:
 			if rf.electionTimeout() {
-				Debug(dTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
 				rf.TurnTo(candidate)
+				Debug(dTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
 				rf.doElection()
 				rf.resetElectionTime()
 			}
@@ -54,8 +54,9 @@ func (rf *Raft) ticker() {
 			}
 		case leader:
 			if rf.heartbeatTimeout() {
-				rf.resetHeartbeatTime()
+				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
 				rf.doAppendEntries(false)
+				rf.resetHeartbeatTime()
 			}
 		}
 		rf.mu.Unlock()

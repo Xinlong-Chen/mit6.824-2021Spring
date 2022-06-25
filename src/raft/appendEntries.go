@@ -5,6 +5,8 @@ const (
 	magic_term  int = -10001
 )
 
+// ticker() call doAppendEntries(), ticker() hold lock
+// if a node turn to leader, leader will call doAppendEntries() to send a heartbeat
 func (rf *Raft) doAppendEntries(emptyHeartbeat bool) {
 	for i := 0; i < len(rf.peers); i++ {
 		if i == rf.me {
@@ -43,6 +45,7 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 		}
 	}
 	rf.mu.Unlock()
+
 	reply := AppendEntriesReply{}
 
 	ok := rf.sendAppendEntries(i, &args, &reply)
@@ -87,11 +90,13 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 			if index > rf.lastLogIndex() || rf.log[index].Term > reply.XTerm {
 				continue
 			}
+
 			if rf.log[index].Term == reply.XTerm {
 				rf.nextIndex[i] = index + 1
 				termNotExit = false
 				break
-			} else if rf.log[index].Term < reply.XTerm {
+			}
+			if rf.log[index].Term < reply.XTerm {
 				break
 			}
 		}

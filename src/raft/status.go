@@ -1,6 +1,5 @@
 package raft
 
-
 type ServerStatus string
 
 const (
@@ -8,6 +7,17 @@ const (
 	candidate ServerStatus = "Candidate"
 	leader    ServerStatus = "Leader"
 )
+
+// return currentTerm and whether this server
+// believes it is the leader.
+func (rf *Raft) GetState() (int, bool) {
+	// Your code here (2A).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	term := rf.currentTerm
+	isleader := (rf.status == leader)
+	return term, isleader
+}
 
 // without lock
 // if have a new goroutine, must lock it !!!
@@ -34,4 +44,3 @@ func (rf *Raft) TurnTo(status ServerStatus) {
 		rf.doAppendEntries(true)
 	}
 }
-

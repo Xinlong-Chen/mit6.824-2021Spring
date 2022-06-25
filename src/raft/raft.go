@@ -18,12 +18,10 @@ package raft
 //
 
 import (
-	"bytes"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"6.824/labgob"
 	"6.824/labrpc"
 )
 
@@ -31,8 +29,8 @@ import (
 // A Go object implementing a single Raft peer.
 //
 type Raft struct {
-	mu        sync.Mutex // Lock to protect shared access to this peer's state
-	cond      *sync.Cond
+	mu        sync.Mutex          // Lock to protect shared access to this peer's state
+	cond      *sync.Cond          // haven't used now, it seem can be used for apply
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -60,63 +58,6 @@ type Raft struct {
 	// private
 	electionTime  time.Time
 	heartbeatTime time.Time
-}
-
-// return currentTerm and whether this server
-// believes it is the leader.
-func (rf *Raft) GetState() (int, bool) {
-	// Your code here (2A).
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
-	term := rf.currentTerm
-	isleader := (rf.status == leader)
-	return term, isleader
-}
-
-//
-// save Raft's persistent state to stable storage,
-// where it can later be retrieved after a crash and restart.
-// see paper's Figure 2 for a description of what should be persistent.
-//
-func (rf *Raft) persist() {
-	// Your code here (2C).
-	w := new(bytes.Buffer)
-	e := labgob.NewEncoder(w)
-	if e.Encode(rf.log) != nil ||
-		e.Encode(rf.currentTerm) != nil ||
-		e.Encode(rf.votedFor) != nil {
-		Debug(dError, "S%d encode fail", rf.me)
-		return
-	}
-	data := w.Bytes()
-	rf.persister.SaveRaftState(data)
-}
-
-//
-// restore previously persisted state.
-//
-func (rf *Raft) readPersist(data []byte) {
-	if data == nil || len(data) < 1 { // bootstrap without any state?
-		return
-	}
-	// Your code here (2C).
-	r := bytes.NewBuffer(data)
-	d := labgob.NewDecoder(r)
-
-	var log []Entry
-	var currentTerm, votedFor int
-
-	if d.Decode(&log) != nil ||
-		d.Decode(&currentTerm) != nil ||
-		d.Decode(&votedFor) != nil {
-		Debug(dError, "S%d dncode fail", rf.me)
-		return
-	}
-
-	rf.log = make([]Entry, len(log))
-	copy(rf.log, log)
-	rf.currentTerm = currentTerm
-	rf.votedFor = votedFor
 }
 
 //
@@ -216,6 +157,7 @@ func (rf *Raft) init() {
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 	// private
+	// begin with follower, set election time
 	rf.resetElectionTime()
 }
 
@@ -239,10 +181,10 @@ func Make(peers []*labrpc.ClientEnd, me int,
 		applyCh:   applyCh,
 	}
 
-	Debug(dClient, "S%d Started", rf.me)
-
 	// Your initialization code here (2A, 2B, 2C).
 	rf.init()
+
+	Debug(dClient, "S%d Started && init success", rf.me)
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
