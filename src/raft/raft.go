@@ -58,8 +58,8 @@ type Raft struct {
 	matchIndex []int
 
 	// private
-	electionTimer *time.Timer
-	heartTimer    *time.Timer
+	electionTime  time.Time
+	heartbeatTime time.Time
 }
 
 // return currentTerm and whether this server
@@ -192,49 +192,16 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
-// The ticker go routine starts a new election if this peer hasn't received
-// heartsbeats recently.
-func (rf *Raft) ticker() {
-	for rf.killed() == false {
-		// Your code here to check if a leader election should
-		// be started and to randomize sleeping time using
-		// time.Sleep().
-		select {
-		case <-rf.electionTimer.C:
-			rf.mu.Lock()
-			if rf.status != leader {
-				// If election timeout elapses: start new election
-				// On conversion to candidate, start election:
-				rf.TurnTo(candidate)
-				Debug(dTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
-				// • Send RequestVote RPCs to all other servers
-				rf.doElection()
-			}
-			// • Reset election timer
-			rf.electionTimer.Reset(rf.election_timeout())
-			rf.mu.Unlock()
-		case <-rf.heartTimer.C:
-			rf.mu.Lock()
-			if rf.status == leader {
-				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
-				rf.doAppendEntries(false)
-			}
-			rf.heartTimer.Reset(rf.heart_timeout())
-			rf.mu.Unlock()
-		}
-	}
-}
-
 func (rf *Raft) leaderInit() {
 	rf.nextIndex = make([]int, len(rf.peers))
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	for i := range rf.nextIndex {
 		rf.nextIndex[i] = len(rf.log)
-	}
-	for i := range rf.matchIndex {
 		rf.matchIndex[i] = 0
 	}
+
+	rf.resetHeartbeatTime()
 }
 
 func (rf *Raft) init() {
@@ -248,12 +215,8 @@ func (rf *Raft) init() {
 	// volatile for all servers
 	rf.commitIndex = 0
 	rf.lastApplied = 0
-	// volatile for leader
-	// rf.nextIndex = make([]int, 0)
-	// rf.matchIndex = make([]int, 0)
 	// private
-	rf.heartTimer = time.NewTimer(rf.heart_timeout())
-	rf.electionTimer = time.NewTimer(rf.election_timeout())
+	rf.resetElectionTime()
 }
 
 //

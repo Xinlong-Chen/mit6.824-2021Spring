@@ -40,7 +40,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.VoteGranted = true
 		reply.Term = rf.currentTerm
 		//  prevent election timeouts (§5.2)
-		rf.electionTimer.Reset(rf.election_timeout())
+		rf.resetElectionTime()
 		// fmt.Printf("%d voted for %d\n", rf.me, args.CandidateId)
 		Debug(dVote, "S%d Granting Vote to S%d at T%d", rf.me, rf.votedFor, rf.currentTerm)
 		return

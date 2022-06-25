@@ -37,8 +37,10 @@ func (rf *Raft) appendTo(emptyHeartbeat bool, i int) {
 		args.LeaderCommit = rf.commitIndex
 		// must copy in here
 		entries := rf.log[rf.nextIndex[i]:]
-		args.Entries = make([]Entry, len(entries))
-		copy(args.Entries, entries)
+		if entries != nil && len(entries) != 0 {
+			args.Entries = make([]Entry, len(entries))
+			copy(args.Entries, entries)
+		}
 	}
 	rf.mu.Unlock()
 	reply := AppendEntriesReply{}

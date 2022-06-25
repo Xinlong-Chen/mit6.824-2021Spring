@@ -1,5 +1,10 @@
 package raft
 
+const (
+	// magic number
+	voted_nil int = -10086
+)
+
 func (rf *Raft) doElection() {
 	votedcount := 1
 	// not another goroutine, needn't lock it

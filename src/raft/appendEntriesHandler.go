@@ -33,7 +33,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	reply.Success = true
 	reply.Term = rf.currentTerm
 	//  prevent election timeouts (§5.2)
-	rf.electionTimer.Reset(rf.election_timeout())
+	rf.resetElectionTime()
 
 	// heartbeat, return
 	if args.PrevLogIndex == magic_index && args.PrevLogTerm == magic_term {
@@ -63,16 +63,19 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		return
 	}
 
-	Debug(dInfo, "S%d before: log: %+v", rf.me, rf.log)
-	origin_end, add_begin := args.PrevLogIndex+1, 0
-	for ; origin_end <= rf.lastLogIndex() && add_begin < len(args.Entries); origin_end, add_begin = origin_end+1, add_begin+1 {
-		if rf.log[origin_end].Term != args.Entries[add_begin].Term {
-			break
+	if args.Entries != nil && len(args.Entries) != 0 {
+		if rf.isConflict(args.Entries) {
+			rf.log = rf.log[:args.PrevLogIndex + 1]
+			entries := make([]Entry, len(args.Entries))
+			copy(entries, args.Entries)
+			rf.log = append(rf.log, entries...)
+			Debug(dInfo, "S%d conflict, truncate log: %+v", rf.me, rf.log)
+		} else {
+			Debug(dInfo, "S%d no conflict, log: %+v", rf.me, rf.log)
 		}
+	} else {
+		Debug(dInfo, "S%d args entries nil or length is 0: %v", rf.me, args.Entries)
 	}
-	rf.log = rf.log[:origin_end]
-	rf.log = append(rf.log, args.Entries[add_begin:]...)
-	Debug(dInfo, "S%d after append: log: %+v", rf.me, rf.log)
 
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = args.LeaderCommit
@@ -82,4 +85,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
 		go rf.applyLog()
 	}
+}
+
+func (rf *Raft) isConflict(entries []Entry) bool {
+	for i, entry := range entries {
+		if rf.log[i].Term != entry.Term {
+			return true
+		}
+	}
+	return false
 }
