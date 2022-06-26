@@ -12,6 +12,12 @@ type RequestVoteArgs struct {
 	LastLogTerm  int
 }
 
+type RequestVoteReply struct {
+	// Your data here (2A).
+	Term        int
+	VoteGranted bool
+}
+
 type AppendEntriesArgs struct {
 	Term         int
 	LeaderId     int
@@ -21,22 +27,26 @@ type AppendEntriesArgs struct {
 	LeaderCommit int
 }
 
-//
-// example RequestVote RPC reply structure.
-// field names must start with capital letters!
-//
-type RequestVoteReply struct {
-	// Your data here (2A).
-	Term        int
-	VoteGranted bool
-}
-
 type AppendEntriesReply struct {
 	Term    int
 	Success bool
 	XTerm   int // for fast backup
 	XIndex  int
 	XLen    int
+}
+
+type InstallSnapshotArgs struct {
+	// Your data here (2A, 2B).
+	Term              int
+	LeaderId          int
+	LastIncludedIndex int
+	LastIncludedTerm  int
+	Data              []byte
+	Done              bool
+}
+
+type InstallSnapshotReply struct {
+	Term int
 }
 
 //

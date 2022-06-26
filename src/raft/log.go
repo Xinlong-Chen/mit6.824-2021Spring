@@ -1,6 +1,7 @@
 package raft
 
 type Entry struct {
+	// Index int
 	Term int
 	Cmd  interface{}
 }
