@@ -1,10 +1,5 @@
 package raft
 
-const (
-	// magic number
-	voted_nil int = -10086
-)
-
 // ticker() call doElection(), ticker() hold lock
 func (rf *Raft) doElection() {
 	votedcount := 1

@@ -37,9 +37,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.resetElectionTime()
 
 	// heartbeat, return
-	if args.PrevLogIndex == magic_index && args.PrevLogTerm == magic_term {
-		return
-	}
+	// if args.PrevLogIndex == magic_index && args.PrevLogTerm == magic_term {
+	// 	return
+	// }
 
 	// attention: must delete overdue data first
 	if args.PrevLogIndex > rf.lastLogIndex() {
@@ -65,7 +65,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 
 	if args.Entries != nil && len(args.Entries) != 0 {
-		if rf.isConflict(args.Entries) {
+		if rf.isConflict(args) {
 			rf.log = rf.log[:args.PrevLogIndex+1]
 			entries := make([]Entry, len(args.Entries))
 			copy(entries, args.Entries)
@@ -88,9 +88,13 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 }
 
-func (rf *Raft) isConflict(entries []Entry) bool {
-	for i, entry := range entries {
-		if rf.log[i].Term != entry.Term {
+func (rf *Raft) isConflict(args *AppendEntriesArgs) bool {
+	base_index := args.PrevLogIndex + 1
+	for i, entry := range args.Entries {
+		if i+base_index > rf.lastLogIndex() {
+			return true
+		}
+		if rf.log[i+base_index].Term != entry.Term {
 			return true
 		}
 	}

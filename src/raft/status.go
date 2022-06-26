@@ -41,6 +41,6 @@ func (rf *Raft) TurnTo(status ServerStatus) {
 		Debug(dTerm, "S%d converting to %v in T(%d)", rf.me, rf.status, rf.currentTerm)
 		// Upon election: send initial empty AppendEntries RPCs (heartbeat) to each server;
 		// repeat during idle periods to prevent election timeouts (§5.2)
-		rf.doAppendEntries(true)
+		rf.doAppendEntries()
 	}
 }

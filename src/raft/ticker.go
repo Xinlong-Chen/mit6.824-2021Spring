@@ -5,13 +5,6 @@ import (
 	"time"
 )
 
-const (
-	gap_time            int = 3
-	election_base_time  int = 300
-	election_range_time int = 100
-	heartbeat_time      int = 50
-)
-
 func (rf *Raft) electionTimeout() bool {
 	return time.Now().After(rf.electionTime)
 }
@@ -55,7 +48,7 @@ func (rf *Raft) ticker() {
 		case leader:
 			if rf.heartbeatTimeout() {
 				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
-				rf.doAppendEntries(false)
+				rf.doAppendEntries()
 				rf.resetHeartbeatTime()
 			}
 		}
