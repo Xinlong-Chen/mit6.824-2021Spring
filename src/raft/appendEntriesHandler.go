@@ -98,15 +98,14 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	}
 }
 
-// base_idx have transfer
 func (rf *Raft) isConflict(args *AppendEntriesArgs) bool {
-	idx, _ := rf.transfer(args.PrevLogIndex)
-	base_index := idx + 1
+	base_index := args.PrevLogIndex + 1
 	for i, entry := range args.Entries {
-		if i+base_index > len(rf.log)-1 {
+		entry_rf, err := rf.getEntry(i + base_index)
+		if err < 0 {
 			return true
 		}
-		if rf.log[i+base_index].Term != entry.Term {
+		if entry_rf.Term != entry.Term {
 			return true
 		}
 	}

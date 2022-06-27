@@ -60,12 +60,12 @@ func (rf *Raft) isUpToDate(lastLogIndex int, lastLogTerm int) bool {
 func (rf *Raft) toCommit() {
 	// append entries before commit
 	for i := rf.lastLogIndex(); i > rf.commitIndex; i-- {
-		idx, err := rf.transfer(i)
+		entry, err := rf.getEntry(i)
 		if err < 0 {
 			continue
 		}
 
-		if rf.log[idx].Term != rf.currentTerm {
+		if entry.Term != rf.currentTerm {
 			return
 		}
 

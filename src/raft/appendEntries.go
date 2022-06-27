@@ -83,7 +83,7 @@ func (rf *Raft) appendTo(peer int) {
 	if reply.XTerm != -1 {
 		termNotExit := true
 		for index := rf.nextIndex[peer] - 1; index >= 1; index-- {
-			entry, err := rf.getEntry(prevLogIndex)
+			entry, err := rf.getEntry(index)
 			if err < 0 {
 				continue
 			}
