@@ -78,23 +78,34 @@ type InstallSnapshotReply struct {
 // the struct itself.
 //
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
-	Debug(dInfo, "S%d send request to %d {%+v}", rf.me, server, args)
+	Debug(dInfo, "S%d send RequestVote request to %d {%+v}", rf.me, server, args)
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	if !ok {
 		Debug(dWarn, "S%d call (RequestVote)rpc to C%d error", rf.me, server)
 		return ok
 	}
-	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
+	Debug(dInfo, "S%d get RequestVote response from %d {%+v}", rf.me, server, reply)
 	return ok
 }
 
 func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
-	Debug(dInfo, "S%d send request to %d {%+v}", rf.me, server, args)
+	Debug(dInfo, "S%d send AppendEntries request to %d {%+v}", rf.me, server, args)
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 	if !ok {
 		Debug(dWarn, "S%d call (AppendEntries)rpc to C%d error", rf.me, server)
 		return ok
 	}
-	Debug(dInfo, "S%d get response from %d {%+v}", rf.me, server, reply)
+	Debug(dInfo, "S%d get AppendEntries response from %d {%+v}", rf.me, server, reply)
+	return ok
+}
+
+func (rf *Raft) sendInstallSnapshot(server int, args *InstallSnapshotArgs, reply *InstallSnapshotReply) bool {
+	Debug(dInfo, "S%d send InstallSnapshot request to %d {%+v}", rf.me, server, args)
+	ok := rf.peers[server].Call("Raft.InstallSnapshot", args, reply)
+	if !ok {
+		Debug(dWarn, "S%d call (InstallSnapshot)rpc to C%d error", rf.me, server)
+		return ok
+	}
+	Debug(dInfo, "S%d get InstallSnapshot response from %d {%+v}", rf.me, server, reply)
 	return ok
 }

@@ -6,7 +6,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	defer rf.mu.Unlock()
 
 	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
-	defer Debug(dLog, "S%d arg: %+v reply: %+v {log: %+v}", rf.me, args, reply, rf.log)
+	defer Debug(dLog, "S%d arg: %+v reply: %+v", rf.me, args, reply)
 
 	defer rf.persist()
 
@@ -94,8 +94,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			rf.commitIndex = rf.lastLogIndex()
 		}
 		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
-		go rf.applyLog()
+		rf.applyCond.Signal()
 	}
+	Debug(dInfo, "S%d log: %+v", rf.me, rf.log)
 }
 
 func (rf *Raft) isConflict(args *AppendEntriesArgs) bool {

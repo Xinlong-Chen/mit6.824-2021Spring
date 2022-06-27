@@ -30,7 +30,7 @@ import (
 //
 type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	cond      *sync.Cond          // haven't used now, it seem can be used for apply
+	applyCond *sync.Cond          // haven't used now, it seem can be used for apply
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
@@ -95,7 +95,7 @@ func (rf *Raft) leaderInit() {
 
 func (rf *Raft) init() {
 	rf.status = follower
-	rf.cond = sync.NewCond(&rf.mu)
+	rf.applyCond = sync.NewCond(&rf.mu)
 	// persistent for all servers
 	rf.currentTerm = 0
 	rf.votedFor = voted_nil // means that vote for nobody
@@ -141,6 +141,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
+	go rf.applyLog()
 
 	return rf
 }

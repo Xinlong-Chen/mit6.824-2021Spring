@@ -7,7 +7,13 @@ func (rf *Raft) doAppendEntries() {
 		if i == rf.me {
 			continue
 		}
-		go rf.appendTo(i)
+
+		wantSendIndex := rf.nextIndex[i] - 1
+		if wantSendIndex < rf.frontLogIndex() {
+			go rf.doInstallSnapshot(i)
+		} else {
+			go rf.appendTo(i)
+		}
 	}
 }
 
@@ -80,7 +86,9 @@ func (rf *Raft) appendTo(peer int) {
 		return
 	}
 
-	if reply.XTerm != -1 {
+	if reply.XTerm == -1 { // null slot
+		rf.nextIndex[peer] -= reply.XLen
+	} else if reply.XTerm >= 0 {
 		termNotExit := true
 		for index := rf.nextIndex[peer] - 1; index >= 1; index-- {
 			entry, err := rf.getEntry(index)
@@ -104,8 +112,8 @@ func (rf *Raft) appendTo(peer int) {
 		if termNotExit {
 			rf.nextIndex[peer] = reply.XIndex
 		}
-	} else { // null slot
-		rf.nextIndex[peer] -= reply.XLen
+	} else {
+		rf.nextIndex[peer] -= 1
 	}
 
 	// Debug(dTrace, "S%d nextIndex:{%+v}", rf.me, rf.nextIndex)

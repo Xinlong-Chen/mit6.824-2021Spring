@@ -59,6 +59,10 @@ func (rf *Raft) isUpToDate(lastLogIndex int, lastLogTerm int) bool {
 
 func (rf *Raft) toCommit() {
 	// append entries before commit
+	if rf.commitIndex >= rf.lastLogIndex() {
+		return
+	}
+
 	for i := rf.lastLogIndex(); i > rf.commitIndex; i-- {
 		entry, err := rf.getEntry(i)
 		if err < 0 {
@@ -77,7 +81,7 @@ func (rf *Raft) toCommit() {
 			if cnt > len(rf.peers)/2 {
 				rf.commitIndex = i
 				Debug(dCommit, "S%d commit to %v", rf.me, rf.commitIndex)
-				go rf.applyLog()
+				rf.applyCond.Signal()
 				return
 			}
 		}

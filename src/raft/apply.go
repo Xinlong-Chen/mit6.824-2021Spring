@@ -24,23 +24,32 @@ type ApplyMsg struct {
 }
 
 // a new goroutine to run it
-// need acquire lock
 func (rf *Raft) applyLog() {
-	rf.mu.Lock()
-	defer rf.mu.Unlock()
+	for rf.killed() == false {
+		rf.mu.Lock()
+		for rf.lastApplied >= rf.commitIndex {
+			rf.applyCond.Wait()
+		}
+		commitIndex := rf.commitIndex
+		commit, _ := rf.transfer(rf.commitIndex)
+		applied, _ := rf.transfer(rf.lastApplied)
+		entries := make([]Entry, commit-applied)
+		copy(entries, rf.log[applied+1:commit+1])
+		rf.mu.Unlock()
 
-	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
-		entry, err := rf.getEntry(i)
-		if err < 0 {
-			Debug(dCommit, "S%d apply %v fail(transfer out of range)", rf.me, i)
-			continue
+		for _, entry := range entries {
+			rf.applyCh <- ApplyMsg{
+				CommandValid: true,
+				Command:      entry.Cmd,
+				CommandIndex: entry.Index,
+			}
 		}
-		rf.applyCh <- ApplyMsg{
-			CommandValid: true,
-			Command:      entry.Cmd,
-			CommandIndex: entry.Index,
+
+		rf.mu.Lock()
+		Debug(dCommit, "S%d apply %v - %v", rf.me, rf.lastApplied, commitIndex)
+		if commitIndex > rf.lastApplied {
+			rf.lastApplied = commitIndex
 		}
-		rf.lastApplied = i
-		Debug(dCommit, "S%d apply %v", rf.me, rf.lastApplied)
+		rf.mu.Unlock()
 	}
 }

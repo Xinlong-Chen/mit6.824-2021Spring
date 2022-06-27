@@ -38,8 +38,44 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 // have more recent info since it communicate the snapshot on applyCh.
 //
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
-
 	// Your code here (2D).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	Debug(dSnap, "S%d CondInstallSnapshot(lastIncludedTerm: %d lastIncludedIndex: %d lastApplied: %d commitIndex: %d)", rf.me, lastIncludedTerm, lastIncludedIndex, rf.lastApplied, rf.commitIndex)
+
+	if rf.frontLogIndex() >= lastIncludedIndex {
+		Debug(dSnap, "S%d refuse, snapshot too old(%d <= %d)", rf.me, lastIncludedIndex, rf.frontLogIndex())
+		return false
+	}
+
+	if lastIncludedIndex > rf.lastLogIndex() {
+		rf.log = make([]Entry, 1)
+	} else {
+		// in range, ignore out of range error
+		idx, _ := rf.transfer(lastIncludedIndex)
+		if rf.log[idx].Term != lastIncludedTerm || rf.log[idx].Index != lastIncludedIndex {
+			Debug(dSnap, "S%d log not match(%d != %d)", rf.me, rf.log[idx].Term, lastIncludedTerm)
+			return false
+		}
+		rf.log = rf.log[idx:]
+	}
+	// dummy node
+	rf.log[0].Term = lastIncludedTerm
+	rf.log[0].Index = lastIncludedIndex
+	rf.log[0].Cmd = nil
+
+	rf.persistSnapshot(snapshot)
+
+	// reset commit
+	if lastIncludedIndex > rf.lastApplied {
+		rf.lastApplied = lastIncludedIndex
+	}
+	if lastIncludedIndex > rf.commitIndex {
+		rf.commitIndex = lastIncludedIndex
+	}
+
+	Debug(dSnap, "S%d after CondInstallSnapshot(lastApplied: %d commitIndex: %d) {%+v}", rf.me, rf.lastApplied, rf.commitIndex, rf.log)
 
 	return true
 }
@@ -53,9 +89,11 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
+	Debug(dSnap, "S%d call Snapshot, index: %d", rf.me, index)
+
 	// refuse to install a snapshot
 	if rf.frontLogIndex() >= index {
-		Debug(dSnap, "S%d have received %d snapshot", rf.me, index)
+		Debug(dSnap, "S%d refuse, have received %d snapshot", rf.me, index)
 		return
 	}
 
@@ -68,4 +106,5 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.log = rf.log[idx:]
 	rf.log[0].Cmd = nil // dummy node
 	rf.persistSnapshot(snapshot)
+	Debug(dSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
 }
