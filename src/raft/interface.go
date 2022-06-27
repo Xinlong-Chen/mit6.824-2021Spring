@@ -44,7 +44,7 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 
 	Debug(dSnap, "S%d CondInstallSnapshot(lastIncludedTerm: %d lastIncludedIndex: %d lastApplied: %d commitIndex: %d)", rf.me, lastIncludedTerm, lastIncludedIndex, rf.lastApplied, rf.commitIndex)
 
-	if rf.frontLogIndex() >= lastIncludedIndex {
+	if lastIncludedIndex <= rf.commitIndex {
 		Debug(dSnap, "S%d refuse, snapshot too old(%d <= %d)", rf.me, lastIncludedIndex, rf.frontLogIndex())
 		return false
 	}
@@ -54,10 +54,6 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 	} else {
 		// in range, ignore out of range error
 		idx, _ := rf.transfer(lastIncludedIndex)
-		if rf.log[idx].Term != lastIncludedTerm || rf.log[idx].Index != lastIncludedIndex {
-			Debug(dSnap, "S%d log not match(%d != %d)", rf.me, rf.log[idx].Term, lastIncludedTerm)
-			return false
-		}
 		rf.log = rf.log[idx:]
 	}
 	// dummy node

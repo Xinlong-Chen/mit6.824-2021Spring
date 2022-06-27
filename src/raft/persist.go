@@ -54,6 +54,8 @@ func (rf *Raft) readPersist(data []byte) {
 	// log at least is 1
 	rf.log = make([]Entry, len(log))
 	copy(rf.log, log)
+	rf.lastApplied = rf.frontLogIndex()
+	rf.commitIndex = rf.frontLogIndex()
 	rf.currentTerm = currentTerm
 	rf.votedFor = votedFor
 }

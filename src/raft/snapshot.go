@@ -42,5 +42,8 @@ func (rf *Raft) doInstallSnapshot(peer int) {
 		rf.TurnTo(follower)
 		return
 	}
+
+	rf.nextIndex[peer] = args.LastIncludedIndex + 1
+
 	Debug(dInfo, "S%d send snapshot to C%d success!", rf.me, peer)
 }

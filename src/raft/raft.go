@@ -86,7 +86,7 @@ func (rf *Raft) leaderInit() {
 	rf.matchIndex = make([]int, len(rf.peers))
 
 	for i := range rf.nextIndex {
-		rf.nextIndex[i] = len(rf.log)
+		rf.nextIndex[i] = rf.lastLogIndex() + 1
 		rf.matchIndex[i] = 0
 	}
 
@@ -103,7 +103,7 @@ func (rf *Raft) init() {
 	// use first log entry as last snapshot index
 	// also it's dummy node!!
 	rf.log = append(rf.log, Entry{magic_index, magic_term, nil})
-	// volatile for all servers
+	// volatile for all servers, will be changed in persister read
 	rf.commitIndex = 0
 	rf.lastApplied = 0
 	// private

@@ -25,8 +25,8 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	reply.Term = rf.currentTerm
 	rf.resetElectionTime()
 
-	if args.LastIncludedIndex <= rf.frontLogIndex() {
-		Debug(dSnap, "S%d args's snapshot too old(%d < %d)", rf.me, args.LastIncludedIndex, rf.frontLogIndex())
+	if args.LastIncludedIndex <= rf.commitIndex {
+		Debug(dSnap, "S%d args's snapshot too old(%d < %d)", rf.me, args.LastIncludedIndex, rf.commitIndex)
 		return
 	}
 
