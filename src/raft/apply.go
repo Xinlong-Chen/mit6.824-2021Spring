@@ -30,10 +30,15 @@ func (rf *Raft) applyLog() {
 	defer rf.mu.Unlock()
 
 	for i := rf.lastApplied + 1; i <= rf.commitIndex; i++ {
+		entry, err := rf.getEntry(i)
+		if err < 0 {
+			Debug(dCommit, "S%d apply %v fail(transfer out of range)", rf.me, i)
+			continue
+		}
 		rf.applyCh <- ApplyMsg{
 			CommandValid: true,
-			Command:      rf.log[i].Cmd,
-			CommandIndex: i,
+			Command:      entry.Cmd,
+			CommandIndex: entry.Index,
 		}
 		rf.lastApplied = i
 		Debug(dCommit, "S%d apply %v", rf.me, rf.lastApplied)

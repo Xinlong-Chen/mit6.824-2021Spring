@@ -3,11 +3,12 @@ package raft
 // ticker() call doElection(), ticker() hold lock
 func (rf *Raft) doElection() {
 	votedcount := 1
+	entry := rf.lastLog()
 	args := RequestVoteArgs{
 		Term:         rf.currentTerm,
 		CandidateId:  rf.me,
-		LastLogIndex: rf.lastLogIndex(),
-		LastLogTerm:  rf.log[rf.lastLogIndex()].Term,
+		LastLogIndex: entry.Index,
+		LastLogTerm:  entry.Term,
 	}
 
 	for i := 0; i < len(rf.peers); i++ {

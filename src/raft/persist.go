@@ -6,15 +6,10 @@ import (
 	"6.824/labgob"
 )
 
-//
-// save Raft's persistent state to stable storage,
-// where it can later be retrieved after a crash and restart.
-// see paper's Figure 2 for a description of what should be persistent.
-//
-func (rf *Raft) persist() {
-	// Your code here (2C).
+func (rf *Raft) raftState() []byte {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
+
 	if e.Encode(rf.log) != nil ||
 		e.Encode(rf.currentTerm) != nil ||
 		e.Encode(rf.votedFor) != nil {
@@ -22,7 +17,17 @@ func (rf *Raft) persist() {
 		panic("encode fail")
 	}
 	data := w.Bytes()
-	rf.persister.SaveRaftState(data)
+	return data
+}
+
+//
+// save Raft's persistent state to stable storage,
+// where it can later be retrieved after a crash and restart.
+// see paper's Figure 2 for a description of what should be persistent.
+//
+func (rf *Raft) persist() {
+	// Your code here (2C).
+	rf.persister.SaveRaftState(rf.raftState())
 }
 
 //
@@ -51,4 +56,8 @@ func (rf *Raft) readPersist(data []byte) {
 	copy(rf.log, log)
 	rf.currentTerm = currentTerm
 	rf.votedFor = votedFor
+}
+
+func (rf *Raft) persistSnapshot(snapshot []byte) {
+	rf.persister.SaveStateAndSnapshot(rf.raftState(), snapshot)
 }

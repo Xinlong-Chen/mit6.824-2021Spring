@@ -31,7 +31,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		// log judge
 		if !rf.isUpToDate(args.LastLogIndex, args.LastLogTerm) {
 			reply.VoteGranted, reply.Term = false, rf.currentTerm
-			Debug(dVote, "S%d C%d not uo-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.log[rf.lastLogIndex()].Term)
+			Debug(dVote, "S%d C%d not up-to-date, refuse it{arg:%+v, index:%d term:%d}", rf.me, args.CandidateId, args, rf.lastLogIndex(), rf.lastLog().Term)
 			return
 		}
 

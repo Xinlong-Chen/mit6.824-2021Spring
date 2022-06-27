@@ -26,13 +26,20 @@ func (rf *Raft) appendTo(peer int) {
 		LeaderCommit: rf.commitIndex,
 	}
 
-	Debug(dTrace, "S%d log length: %d, nextIndex:{%+v}", rf.me, len(rf.log), rf.nextIndex)
+	// Debug(dTrace, "S%d log length: %d, nextIndex:{%+v}", rf.me, len(rf.log), rf.nextIndex)
+	// 0 <= prevLogIndex <= len(log) - 1
+	prevLogIndex := rf.nextIndex[peer] - 1
+	idx, err := rf.transfer(prevLogIndex)
+	if err < 0 {
+		rf.mu.Unlock()
+		return
+	}
 
-	args.PrevLogIndex = rf.nextIndex[peer] - 1
-	args.PrevLogTerm = rf.log[args.PrevLogIndex].Term
+	args.PrevLogIndex = rf.log[idx].Index
+	args.PrevLogTerm = rf.log[idx].Term
 
 	// must copy in here
-	entries := rf.log[rf.nextIndex[peer]:]
+	entries := rf.log[idx+1:]
 	args.Entries = make([]Entry, len(entries))
 	copy(args.Entries, entries)
 	rf.mu.Unlock()
@@ -76,16 +83,21 @@ func (rf *Raft) appendTo(peer int) {
 	if reply.XTerm != -1 {
 		termNotExit := true
 		for index := rf.nextIndex[peer] - 1; index >= 1; index-- {
-			if index > rf.lastLogIndex() || rf.log[index].Term > reply.XTerm {
+			entry, err := rf.getEntry(prevLogIndex)
+			if err < 0 {
 				continue
 			}
 
-			if rf.log[index].Term == reply.XTerm {
+			if entry.Term > reply.XTerm {
+				continue
+			}
+
+			if entry.Term == reply.XTerm {
 				rf.nextIndex[peer] = index + 1
 				termNotExit = false
 				break
 			}
-			if rf.log[index].Term < reply.XTerm {
+			if entry.Term < reply.XTerm {
 				break
 			}
 		}

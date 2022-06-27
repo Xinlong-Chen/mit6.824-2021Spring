@@ -42,7 +42,6 @@ type InstallSnapshotArgs struct {
 	LastIncludedIndex int
 	LastIncludedTerm  int
 	Data              []byte
-	Done              bool
 }
 
 type InstallSnapshotReply struct {

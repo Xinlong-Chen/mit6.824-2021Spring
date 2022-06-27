@@ -100,7 +100,9 @@ func (rf *Raft) init() {
 	rf.currentTerm = 0
 	rf.votedFor = voted_nil // means that vote for nobody
 	rf.log = make([]Entry, 0)
-	rf.log = append(rf.log, Entry{magic_term, ""})
+	// use first log entry as last snapshot index
+	// also it's dummy node!!
+	rf.log = append(rf.log, Entry{magic_index, magic_term, nil})
 	// volatile for all servers
 	rf.commitIndex = 0
 	rf.lastApplied = 0

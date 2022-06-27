@@ -23,7 +23,8 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		return -1, -1, false
 	}
 
-	rf.log = append(rf.log, Entry{rf.currentTerm, command})
+	index := rf.lastLogIndex() + 1
+	rf.log = append(rf.log, Entry{index, rf.currentTerm, command})
 	rf.persist()
 
 	defer Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
@@ -49,5 +50,22 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 // that index. Raft should now trim its log as much as possible.
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (2D).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
+	// refuse to install a snapshot
+	if rf.frontLogIndex() >= index {
+		Debug(dSnap, "S%d have received %d snapshot", rf.me, index)
+		return
+	}
+
+	idx, err := rf.transfer(index)
+	if err < 0 {
+		idx = len(rf.log) - 1
+	}
+
+	// let last snapshot node as dummy node
+	rf.log = rf.log[idx:]
+	rf.log[0].Cmd = nil // dummy node
+	rf.persistSnapshot(snapshot)
 }
