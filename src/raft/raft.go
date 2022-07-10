@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"6.824/labrpc"
+	"6.824/utils"
 )
 
 //
@@ -134,7 +135,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	// Your initialization code here (2A, 2B, 2C).
 	rf.init()
 
-	Debug(dClient, "S%d Started && init success", rf.me)
+	utils.Debug(utils.DClient, "S%d Started && init success", rf.me)
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())

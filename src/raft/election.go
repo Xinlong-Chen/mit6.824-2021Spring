@@ -1,5 +1,7 @@
 package raft
 
+import "6.824/utils"
+
 // ticker() call doElection(), ticker() hold lock
 func (rf *Raft) doElection() {
 	votedcount := 1
@@ -35,7 +37,7 @@ func (rf *Raft) doElection() {
 			// If RPC request or response contains term T > currentTerm:
 			// set currentTerm = T, convert to follower (§5.1)
 			if reply.Term > rf.currentTerm {
-				Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
+				utils.Debug(utils.DTerm, "S%d S%d term larger(%d > %d)", rf.me, i, args.Term, rf.currentTerm)
 				// turn to follower
 				rf.currentTerm, rf.votedFor = reply.Term, voted_nil
 				rf.persist()

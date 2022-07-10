@@ -1,5 +1,7 @@
 package raft
 
+import "6.824/utils"
+
 type Entry struct {
 	Index int
 	Term  int
@@ -29,7 +31,7 @@ func (rf *Raft) transfer(index int) (int, int) {
 	// left open, right close
 	// fuck range!
 	if index < begin || index > end {
-		Debug(dWarn, "S%d log out of range: %d, [%d, %d]", rf.me, index, begin, end)
+		utils.Debug(utils.DWarn, "S%d log out of range: %d, [%d, %d]", rf.me, index, begin, end)
 		return 0, -1
 	}
 	return index - begin, 0
@@ -41,7 +43,7 @@ func (rf *Raft) getEntry(index int) (Entry, int) {
 	// left open, right close
 	// fuck range!
 	if index < begin || index > end {
-		Debug(dWarn, "S%d log out of range: %d, [%d, %d]", rf.me, index, begin, end)
+		utils.Debug(utils.DWarn, "S%d log out of range: %d, [%d, %d]", rf.me, index, begin, end)
 		return Entry{magic_index, magic_term, nil}, -1
 	}
 	return rf.log[index-begin], 0
@@ -80,12 +82,12 @@ func (rf *Raft) toCommit() {
 			}
 			if cnt > len(rf.peers)/2 {
 				rf.commitIndex = i
-				Debug(dCommit, "S%d commit to %v", rf.me, rf.commitIndex)
+				utils.Debug(utils.DCommit, "S%d commit to %v", rf.me, rf.commitIndex)
 				rf.applyCond.Signal()
 				return
 			}
 		}
 	}
 
-	Debug(dCommit, "S%d don't have half replicated from %v to %v now", rf.me, rf.commitIndex, rf.lastLogIndex())
+	utils.Debug(utils.DCommit, "S%d don't have half replicated from %v to %v now", rf.me, rf.commitIndex, rf.lastLogIndex())
 }

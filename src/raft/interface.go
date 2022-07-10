@@ -1,5 +1,7 @@
 package raft
 
+import "6.824/utils"
+
 //
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
@@ -19,7 +21,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	defer rf.mu.Unlock()
 
 	if rf.status != leader {
-		Debug(dClient, "S%d Not leader cmd: %+v", rf.me, command)
+		utils.Debug(utils.DClient, "S%d Not leader cmd: %+v", rf.me, command)
 		return -1, -1, false
 	}
 
@@ -27,8 +29,10 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.log = append(rf.log, Entry{index, rf.currentTerm, command})
 	rf.persist()
 
-	defer Debug(dLog2, "S%d append log: %+v", rf.me, rf.log)
-	Debug(dClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
+	defer utils.Debug(utils.DLog2, "S%d append log: %+v", rf.me, rf.log)
+	utils.Debug(utils.DClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
+
+	rf.doAppendEntries()
 
 	return rf.lastLogIndex(), rf.currentTerm, true
 }
@@ -42,10 +46,10 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	Debug(dSnap, "S%d CondInstallSnapshot(lastIncludedTerm: %d lastIncludedIndex: %d lastApplied: %d commitIndex: %d)", rf.me, lastIncludedTerm, lastIncludedIndex, rf.lastApplied, rf.commitIndex)
+	utils.Debug(utils.DSnap, "S%d CondInstallSnapshot(lastIncludedTerm: %d lastIncludedIndex: %d lastApplied: %d commitIndex: %d)", rf.me, lastIncludedTerm, lastIncludedIndex, rf.lastApplied, rf.commitIndex)
 
 	if lastIncludedIndex <= rf.commitIndex {
-		Debug(dSnap, "S%d refuse, snapshot too old(%d <= %d)", rf.me, lastIncludedIndex, rf.frontLogIndex())
+		utils.Debug(utils.DSnap, "S%d refuse, snapshot too old(%d <= %d)", rf.me, lastIncludedIndex, rf.frontLogIndex())
 		return false
 	}
 
@@ -71,7 +75,7 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 		rf.commitIndex = lastIncludedIndex
 	}
 
-	Debug(dSnap, "S%d after CondInstallSnapshot(lastApplied: %d commitIndex: %d) {%+v}", rf.me, rf.lastApplied, rf.commitIndex, rf.log)
+	utils.Debug(utils.DSnap, "S%d after CondInstallSnapshot(lastApplied: %d commitIndex: %d) {%+v}", rf.me, rf.lastApplied, rf.commitIndex, rf.log)
 
 	return true
 }
@@ -85,11 +89,11 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	Debug(dSnap, "S%d call Snapshot, index: %d", rf.me, index)
+	utils.Debug(utils.DSnap, "S%d call Snapshot, index: %d", rf.me, index)
 
 	// refuse to install a snapshot
 	if rf.frontLogIndex() >= index {
-		Debug(dSnap, "S%d refuse, have received %d snapshot", rf.me, index)
+		utils.Debug(utils.DSnap, "S%d refuse, have received %d snapshot", rf.me, index)
 		return
 	}
 
@@ -102,5 +106,5 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.log = rf.log[idx:]
 	rf.log[0].Cmd = nil // dummy node
 	rf.persistSnapshot(snapshot)
-	Debug(dSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
+	utils.Debug(utils.DSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
 }

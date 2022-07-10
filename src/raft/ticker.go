@@ -3,6 +3,8 @@ package raft
 import (
 	"math/rand"
 	"time"
+
+	"6.824/utils"
 )
 
 func (rf *Raft) electionTimeout() bool {
@@ -34,20 +36,20 @@ func (rf *Raft) ticker() {
 		case follower:
 			if rf.electionTimeout() {
 				rf.TurnTo(candidate)
-				Debug(dTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
+				utils.Debug(utils.DTimer, "S%d Election timeout, Start election, T%d", rf.me, rf.currentTerm)
 				rf.doElection()
 				rf.resetElectionTime()
 			}
 		case candidate:
 			if rf.electionTimeout() {
 				rf.TurnTo(candidate)
-				Debug(dTimer, "S%d Election timeout, re-start election, T%d", rf.me, rf.currentTerm)
+				utils.Debug(utils.DTimer, "S%d Election timeout, re-start election, T%d", rf.me, rf.currentTerm)
 				rf.doElection()
 				rf.resetElectionTime()
 			}
 		case leader:
 			if rf.heartbeatTimeout() {
-				Debug(dTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
+				utils.Debug(utils.DTimer, "S%d Heartbeat timeout, send heartbeat boardcast, T%d", rf.me, rf.currentTerm)
 				rf.doAppendEntries()
 				rf.resetHeartbeatTime()
 			}

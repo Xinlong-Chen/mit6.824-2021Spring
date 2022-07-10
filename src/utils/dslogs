@@ -74,7 +74,7 @@ def main(
 
             msg = " ".join(msg)
 
-            # Debug calls from the test suite aren't associated with
+            # utils.Debug calls from the test suite aren't associated with
             # any particular peer. Otherwise we can treat second column
             # as peer id
             if topic != "TEST":

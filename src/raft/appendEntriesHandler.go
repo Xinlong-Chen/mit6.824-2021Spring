@@ -1,19 +1,21 @@
 package raft
 
+import "6.824/utils"
+
 // handler need to require lock
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	Debug(dLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
-	defer Debug(dLog, "S%d arg: %+v reply: %+v", rf.me, args, reply)
+	utils.Debug(utils.DLog, "S%d S%d appendEntries", rf.me, args.LeaderId)
+	defer utils.Debug(utils.DLog, "S%d arg: %+v reply: %+v", rf.me, args, reply)
 
 	defer rf.persist()
 
 	if args.Term < rf.currentTerm { // leader out, refuse
 		reply.Term = rf.currentTerm
 		reply.Success = false
-		Debug(dTerm, "S%d S%d term less(%d < %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
+		utils.Debug(utils.DTerm, "S%d S%d term less(%d < %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
 		return
 	}
 
@@ -21,7 +23,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		// If RPC request or response contains term T > currentTerm:
 		// set currentTerm = T, convert to follower (§5.1)
 		rf.currentTerm, rf.votedFor = args.Term, voted_nil
-		Debug(dTerm, "S%d S%d term larger(%d > %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
+		utils.Debug(utils.DTerm, "S%d S%d term larger(%d > %d)", rf.me, args.LeaderId, args.Term, rf.currentTerm)
 		rf.TurnTo(follower)
 	}
 
@@ -43,7 +45,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 
 	if args.PrevLogIndex < rf.frontLogIndex() {
 		reply.XTerm, reply.Success = -2, false
-		Debug(dInfo, "S%d args's prevLogIndex too smaller(%v < %v)", rf.me, args.PrevLogIndex, rf.frontLogIndex())
+		utils.Debug(utils.DInfo, "S%d args's prevLogIndex too smaller(%v < %v)", rf.me, args.PrevLogIndex, rf.frontLogIndex())
 		return
 	}
 
@@ -80,12 +82,12 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			entries := make([]Entry, len(args.Entries))
 			copy(entries, args.Entries)
 			rf.log = append(rf.log, entries...)
-			Debug(dInfo, "S%d conflict, truncate log: %+v", rf.me, rf.log)
+			utils.Debug(utils.DInfo, "S%d conflict, truncate log: %+v", rf.me, rf.log)
 		} else {
-			Debug(dInfo, "S%d no conflict, log: %+v", rf.me, rf.log)
+			utils.Debug(utils.DInfo, "S%d no conflict, log: %+v", rf.me, rf.log)
 		}
 	} else {
-		Debug(dInfo, "S%d args entries nil or length is 0: %v", rf.me, args.Entries)
+		utils.Debug(utils.DInfo, "S%d args entries nil or length is 0: %v", rf.me, args.Entries)
 	}
 
 	if args.LeaderCommit > rf.commitIndex {
@@ -93,10 +95,10 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		if args.LeaderCommit > rf.lastLogIndex() {
 			rf.commitIndex = rf.lastLogIndex()
 		}
-		Debug(dCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
+		utils.Debug(utils.DCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
 		rf.applyCond.Signal()
 	}
-	Debug(dInfo, "S%d log: %+v", rf.me, rf.log)
+	utils.Debug(utils.DInfo, "S%d log: %+v", rf.me, rf.log)
 }
 
 func (rf *Raft) isConflict(args *AppendEntriesArgs) bool {

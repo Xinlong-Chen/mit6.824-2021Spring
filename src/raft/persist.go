@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"6.824/labgob"
+	"6.824/utils"
 )
 
 func (rf *Raft) raftState() []byte {
@@ -13,7 +14,7 @@ func (rf *Raft) raftState() []byte {
 	if e.Encode(rf.log) != nil ||
 		e.Encode(rf.currentTerm) != nil ||
 		e.Encode(rf.votedFor) != nil {
-		Debug(dError, "S%d encode fail", rf.me)
+		utils.Debug(utils.DError, "S%d encode fail", rf.me)
 		panic("encode fail")
 	}
 	data := w.Bytes()
@@ -47,7 +48,7 @@ func (rf *Raft) readPersist(data []byte) {
 	if d.Decode(&log) != nil ||
 		d.Decode(&currentTerm) != nil ||
 		d.Decode(&votedFor) != nil {
-		Debug(dError, "S%d decode fail", rf.me)
+		utils.Debug(utils.DError, "S%d decode fail", rf.me)
 		panic("encode fail")
 	}
 

@@ -1,11 +1,13 @@
 package raft
 
+import "6.824/utils"
+
 func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapshotReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	Debug(dSnap, "S%d S%d installSnapshot", rf.me, args.LeaderId)
-	defer Debug(dSnap, "S%d arg: %+v reply: %+v", rf.me, args, reply)
+	utils.Debug(utils.DSnap, "S%d S%d installSnapshot", rf.me, args.LeaderId)
+	defer utils.Debug(utils.DSnap, "S%d arg: %+v reply: %+v", rf.me, args, reply)
 
 	if args.Term < rf.currentTerm {
 		reply.Term = rf.currentTerm
@@ -26,7 +28,7 @@ func (rf *Raft) InstallSnapshot(args *InstallSnapshotArgs, reply *InstallSnapsho
 	rf.resetElectionTime()
 
 	if args.LastIncludedIndex <= rf.commitIndex {
-		Debug(dSnap, "S%d args's snapshot too old(%d < %d)", rf.me, args.LastIncludedIndex, rf.commitIndex)
+		utils.Debug(utils.DSnap, "S%d args's snapshot too old(%d < %d)", rf.me, args.LastIncludedIndex, rf.commitIndex)
 		return
 	}
 
