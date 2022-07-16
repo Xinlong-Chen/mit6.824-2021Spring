@@ -1,13 +1,19 @@
 package kvraft
 
-import "6.824/labrpc"
-import "crypto/rand"
-import "math/big"
+import (
+	"crypto/rand"
+	"math/big"
+	"time"
 
+	"6.824/labrpc"
+)
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
 	// You will have to modify this struct.
+	leaderId int
+	seqId    int64
+	clientId int64
 }
 
 func nrand() int64 {
@@ -21,6 +27,9 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
+	ck.leaderId = 0
+	ck.clientId = nrand()
+	ck.seqId = 0
 	return ck
 }
 
@@ -36,29 +45,50 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
 //
-func (ck *Clerk) Get(key string) string {
+func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
+	cmd := Op{
+		Key:    key,
+		Value:  value,
+		OpType: OpType,
+	}
 
-	// You will have to modify this function.
-	return ""
+	ck.seqId += 1
+	args := CmdArgs{
+		SeqId:    ck.seqId,
+		ClientId: ck.clientId,
+		Cmd:      cmd,
+	}
+
+	for {
+		reply := CmdReply{}
+
+		ok := ck.servers[ck.leaderId].Call("KVServer.Command", &args, &reply)
+
+		if !ok {
+			ck.leaderId = (ck.leaderId + 1) % len(ck.servers)
+			time.Sleep(retry_timeout)
+			continue
+		}
+
+		if reply.Err == OK {
+			return reply.Value
+		} else if reply.Err == ErrNoKey {
+			return ""
+		}
+
+		ck.leaderId = (ck.leaderId + 1) % len(ck.servers)
+		time.Sleep(retry_timeout)
+	}
 }
 
-//
-// shared by Put and Append.
-//
-// you can send an RPC with code like this:
-// ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
-//
-// the types of args and reply (including whether they are pointers)
-// must match the declared types of the RPC handler function's
-// arguments. and reply must be passed as a pointer.
-//
-func (ck *Clerk) PutAppend(key string, value string, op string) {
-	// You will have to modify this function.
+func (ck *Clerk) Get(key string) string {
+	return ck.sendCmd(key, "", OpGet)
 }
 
 func (ck *Clerk) Put(key string, value string) {
-	ck.PutAppend(key, value, "Put")
+	ck.sendCmd(key, value, OpPut)
 }
+
 func (ck *Clerk) Append(key string, value string) {
-	ck.PutAppend(key, value, "Append")
+	ck.sendCmd(key, value, OpAppend)
 }

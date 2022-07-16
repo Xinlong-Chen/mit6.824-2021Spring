@@ -28,6 +28,7 @@ const (
 	DTrace   logTopic = "TRCE"
 	DVote    logTopic = "VOTE"
 	DWarn    logTopic = "WARN"
+	DServer  logTopic = "SEVR"
 )
 
 var debugStart time.Time

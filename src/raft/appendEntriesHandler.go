@@ -82,9 +82,9 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			entries := make([]Entry, len(args.Entries))
 			copy(entries, args.Entries)
 			rf.log = append(rf.log, entries...)
-			utils.Debug(utils.DInfo, "S%d conflict, truncate log: %+v", rf.me, rf.log)
+			// utils.Debug(utils.DInfo, "S%d conflict, truncate log: %+v", rf.me, rf.log)
 		} else {
-			utils.Debug(utils.DInfo, "S%d no conflict, log: %+v", rf.me, rf.log)
+			// utils.Debug(utils.DInfo, "S%d no conflict, log: %+v", rf.me, rf.log)
 		}
 	} else {
 		utils.Debug(utils.DInfo, "S%d args entries nil or length is 0: %v", rf.me, args.Entries)
@@ -98,7 +98,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		utils.Debug(utils.DCommit, "S%d commit to %v(lastLogIndex: %d)", rf.me, rf.commitIndex, rf.lastLogIndex())
 		rf.applyCond.Signal()
 	}
-	utils.Debug(utils.DInfo, "S%d log: %+v", rf.me, rf.log)
+	// utils.Debug(utils.DInfo, "S%d log: %+v", rf.me, rf.log)
 }
 
 func (rf *Raft) isConflict(args *AppendEntriesArgs) bool {

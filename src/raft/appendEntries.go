@@ -72,7 +72,7 @@ func (rf *Raft) appendTo(peer int) {
 	// If RPC request or response contains term T > currentTerm:
 	// set currentTerm = T, convert to follower (§5.1)
 	if reply.Term > rf.currentTerm {
-		utils.Debug(utils.DTerm, "S%d S%d term larger(%d > %d)", rf.me, peer, args.Term, rf.currentTerm)
+		utils.Debug(utils.DTerm, "S%d S%d term larger(%d > %d)", rf.me, peer, reply.Term, rf.currentTerm)
 		rf.currentTerm, rf.votedFor = reply.Term, voted_nil
 		rf.persist()
 		rf.TurnTo(follower)

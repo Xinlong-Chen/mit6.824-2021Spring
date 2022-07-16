@@ -1,0 +1,16 @@
+./dstest -p 10  Basic3A \
+                Speed3A \
+                Concurrent3A \
+                Unreliable3A \
+                UnreliableOneKey3A \
+                OnePartition3A \
+                ManyPartitionsOneClient3A \
+                ManyPartitionsManyClients3A \
+                PersistOneClient3A \
+                PersistConcurrent3A \
+                PersistConcurrentUnreliable3A \
+                PersistPartition3A \
+                PersistPartitionUnreliable3A \
+                PersistPartitionUnreliableLinearizable3A -n 100
+
+./dstest -p 10  ManyPartitionsManyClients3A  -n 100

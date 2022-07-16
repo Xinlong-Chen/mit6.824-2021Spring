@@ -1,29 +1,17 @@
 package kvraft
 
 import (
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"6.824/labgob"
 	"6.824/labrpc"
 	"6.824/raft"
-	"log"
-	"sync"
-	"sync/atomic"
+	"6.824/utils"
 )
 
-const Debug = false
-
-func DPrintf(format string, a ...interface{}) (n int, err error) {
-	if Debug {
-		log.Printf(format, a...)
-	}
-	return
-}
-
-
-type Op struct {
-	// Your definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
-}
+const MaxLockTime = time.Millisecond * 10 // debug
 
 type KVServer struct {
 	mu      sync.Mutex
@@ -35,15 +23,31 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
+	kvMap          *KV
+	cmdRespChans   map[int]chan OpResp
+	lastCmdContext map[int64]OpContext
+	lastApplied    int
+
+	// for debug
+	lockStart time.Time
+	lockEnd   time.Time
+	lockName  string
 }
 
-
-func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
+func (kv *KVServer) lock(m string) {
+	kv.mu.Lock()
+	kv.lockStart = time.Now()
+	kv.lockName = m
 }
 
-func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
+func (kv *KVServer) unlock(m string) {
+	kv.lockEnd = time.Now()
+	duration := kv.lockEnd.Sub(kv.lockStart)
+	kv.lockName = ""
+	kv.mu.Unlock()
+	if duration > MaxLockTime {
+		utils.Debug(utils.DServer, "S%d lock %s too long: %s", kv.me, m, duration)
+	}
 }
 
 //
@@ -84,7 +88,7 @@ func (kv *KVServer) killed() bool {
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
-	labgob.Register(Op{})
+	labgob.Register(CmdArgs{})
 
 	kv := new(KVServer)
 	kv.me = me
@@ -96,6 +100,139 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
+	kv.kvMap = NewKV()
+	kv.cmdRespChans = make(map[int]chan OpResp)
+	kv.lastCmdContext = make(map[int64]OpContext)
+	kv.lastApplied = 0
+
+	// long-time goroutines
+	go kv.applier()
 
 	return kv
+}
+
+// Handler
+func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
+	defer utils.Debug(utils.DWarn, "S%d args: %+v reply: %+v", kv.me, args, reply)
+
+	kv.mu.Lock()
+	if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
+		context := kv.lastCmdContext[args.ClientId]
+		reply.Value, reply.Err = context.reply.Value, context.reply.Err
+		kv.mu.Unlock()
+		return
+	}
+	kv.mu.Unlock()
+
+	index, _, is_leader := kv.rf.Start(*args)
+	if !is_leader {
+		reply.Value, reply.Err = "", ErrWrongLeader
+		return
+	}
+
+	kv.mu.Lock()
+	kv.cmdRespChans[index] = make(chan OpResp)
+	ch := kv.cmdRespChans[index]
+	kv.mu.Unlock()
+
+	defer func() {
+		kv.mu.Lock()
+		close(kv.cmdRespChans[index])
+		delete(kv.cmdRespChans, index)
+		kv.mu.Unlock()
+	}()
+
+	t := time.NewTimer(cmd_timeout)
+	defer t.Stop()
+
+	select {
+	case resp := <-ch:
+		utils.Debug(utils.DServer, "S%d have applied, resp: %+v", kv.me, resp)
+		reply.Value, reply.Err = resp.Value, resp.Err
+	case <-t.C:
+		utils.Debug(utils.DServer, "S%d timeout", kv.me)
+		reply.Value, reply.Err = "", ErrTimeout
+	}
+}
+
+func (kv *KVServer) applier() {
+	for kv.killed() == false {
+		select {
+		case msg := <-kv.applyCh:
+			utils.Debug(utils.DServer, "S%d apply msg: %+v", kv.me, msg)
+			if msg.SnapshotValid {
+
+			} else if msg.CommandValid {
+				_, isLeader := kv.rf.GetState()
+
+				kv.mu.Lock()
+
+				if msg.CommandIndex <= kv.lastApplied {
+					utils.Debug(utils.DWarn, "S%d out time apply(%d <= %d): %+v", kv.me, msg.CommandIndex, kv.lastApplied, msg)
+					kv.mu.Unlock()
+					continue
+				}
+				kv.lastApplied = msg.CommandIndex
+
+				var resp OpResp
+				args := msg.Command.(CmdArgs)
+
+				if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
+					context := kv.lastCmdContext[args.ClientId]
+					resp = context.reply
+				} else {
+					resp.Value, resp.Err = kv.Opt(args.Cmd)
+					kv.lastCmdContext[args.ClientId] = OpContext{
+						seqId: args.SeqId,
+						reply: resp,
+					}
+				}
+
+				if !isLeader {
+					utils.Debug(utils.DWarn, "S%d not leader, not notify", kv.me)
+					kv.mu.Unlock()
+					continue
+				}
+
+				ch, ok := kv.cmdRespChans[msg.CommandIndex]
+				if !ok {
+					utils.Debug(utils.DWarn, "S%d don't have channel to notify %+v", kv.me, msg)
+					kv.mu.Unlock()
+					continue
+				}
+
+				ch <- resp
+				kv.mu.Unlock()
+			} else {
+
+			}
+		}
+	}
+}
+
+func (kv *KVServer) isDuplicate(clientId int64, seqId int64) bool {
+	context, ok := kv.lastCmdContext[clientId]
+	if !ok {
+		return false
+	}
+	if seqId <= context.seqId {
+		return true
+	}
+	return false
+}
+
+func (kv *KVServer) Opt(cmd Op) (string, Err) {
+	switch cmd.OpType {
+	case OpGet:
+		value, err := kv.kvMap.Get(cmd.Key)
+		return value, err
+	case OpPut:
+		err := kv.kvMap.Put(cmd.Key, cmd.Value)
+		return "", err
+	case OpAppend:
+		err := kv.kvMap.Append(cmd.Key, cmd.Value)
+		return "", err
+	default:
+		return "", OK
+	}
 }

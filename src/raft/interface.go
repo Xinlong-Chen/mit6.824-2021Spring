@@ -29,7 +29,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.log = append(rf.log, Entry{index, rf.currentTerm, command})
 	rf.persist()
 
-	defer utils.Debug(utils.DLog2, "S%d append log: %+v", rf.me, rf.log)
+	// defer utils.Debug(utils.DLog2, "S%d append log: %+v", rf.me, rf.log)
 	utils.Debug(utils.DClient, "S%d cmd: %+v, logIndex: %d", rf.me, command, rf.lastLogIndex())
 
 	rf.doAppendEntries()
@@ -75,7 +75,7 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 		rf.commitIndex = lastIncludedIndex
 	}
 
-	utils.Debug(utils.DSnap, "S%d after CondInstallSnapshot(lastApplied: %d commitIndex: %d) {%+v}", rf.me, rf.lastApplied, rf.commitIndex, rf.log)
+	// utils.Debug(utils.DSnap, "S%d after CondInstallSnapshot(lastApplied: %d commitIndex: %d) {%+v}", rf.me, rf.lastApplied, rf.commitIndex, rf.log)
 
 	return true
 }
@@ -106,5 +106,5 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.log = rf.log[idx:]
 	rf.log[0].Cmd = nil // dummy node
 	rf.persistSnapshot(snapshot)
-	utils.Debug(utils.DSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
+	// utils.Debug(utils.DSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
 }
