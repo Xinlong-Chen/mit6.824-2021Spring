@@ -115,14 +115,14 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	defer utils.Debug(utils.DWarn, "S%d args: %+v reply: %+v", kv.me, args, reply)
 
-	kv.mu.Lock()
+	kv.lock("isDuplicate")
 	if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
 		context := kv.lastCmdContext[args.ClientId]
 		reply.Value, reply.Err = context.reply.Value, context.reply.Err
-		kv.mu.Unlock()
+		kv.unlock("isDuplicate")
 		return
 	}
-	kv.mu.Unlock()
+	kv.unlock("isDuplicate")
 
 	index, _, is_leader := kv.rf.Start(*args)
 	if !is_leader {
@@ -130,16 +130,16 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 		return
 	}
 
-	kv.mu.Lock()
-	kv.cmdRespChans[index] = make(chan OpResp)
-	ch := kv.cmdRespChans[index]
-	kv.mu.Unlock()
+	kv.lock("create chan")
+	ch := make(chan OpResp, 1)
+	kv.cmdRespChans[index] = ch
+	kv.unlock("create chan")
 
 	defer func() {
-		kv.mu.Lock()
-		close(kv.cmdRespChans[index])
+		kv.lock("delete chan")
+		// close(kv.cmdRespChans[index])
 		delete(kv.cmdRespChans, index)
-		kv.mu.Unlock()
+		kv.unlock("delete chan")
 	}()
 
 	t := time.NewTimer(cmd_timeout)
@@ -165,11 +165,12 @@ func (kv *KVServer) applier() {
 			} else if msg.CommandValid {
 				_, isLeader := kv.rf.GetState()
 
-				kv.mu.Lock()
+				kv.lock("apply msg")
 
 				if msg.CommandIndex <= kv.lastApplied {
 					utils.Debug(utils.DWarn, "S%d out time apply(%d <= %d): %+v", kv.me, msg.CommandIndex, kv.lastApplied, msg)
-					kv.mu.Unlock()
+
+					kv.unlock("apply msg")
 					continue
 				}
 				kv.lastApplied = msg.CommandIndex
@@ -190,19 +191,18 @@ func (kv *KVServer) applier() {
 
 				if !isLeader {
 					utils.Debug(utils.DWarn, "S%d not leader, not notify", kv.me)
-					kv.mu.Unlock()
+					kv.unlock("apply msg")
 					continue
 				}
 
 				ch, ok := kv.cmdRespChans[msg.CommandIndex]
 				if !ok {
 					utils.Debug(utils.DWarn, "S%d don't have channel to notify %+v", kv.me, msg)
-					kv.mu.Unlock()
+					kv.unlock("apply msg")
 					continue
 				}
-
 				ch <- resp
-				kv.mu.Unlock()
+				kv.unlock("apply msg")
 			} else {
 
 			}
