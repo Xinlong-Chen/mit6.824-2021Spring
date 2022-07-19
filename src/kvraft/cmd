@@ -15,6 +15,15 @@
 
 ./dstest -p 10  Unreliable3A  -n 100
 
+./dstest -p 20  SnapshotRPC3B \
+                SnapshotSize3B \
+                Speed3B \
+                SnapshotRecover3B \
+                SnapshotRecoverManyClients3B \
+                SnapshotUnreliable3B \
+                SnapshotUnreliableRecover3B \
+                SnapshotUnreliableRecoverConcurrentPartition3B \
+                SnapshotUnreliableRecoverConcurrentPartitionLinearizable3B -n 100
 
 python3 dstest -p 12  Basic3A \
                 Speed3A \

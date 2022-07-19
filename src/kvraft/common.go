@@ -47,8 +47,8 @@ type OpResp struct {
 }
 
 type OpContext struct {
-	seqId int64
-	reply OpResp
+	SeqId int64
+	Reply OpResp
 }
 
 type IndexAndTerm struct {

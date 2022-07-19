@@ -7,6 +7,10 @@ import (
 	"6.824/utils"
 )
 
+func (rf *Raft) RaftPersistSize() int {
+	return rf.persister.RaftStateSize()
+}
+
 func (rf *Raft) raftState() []byte {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)

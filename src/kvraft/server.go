@@ -23,31 +23,10 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	kvMap          *KV
+	KvMap          *KV
 	cmdRespChans   map[IndexAndTerm]chan OpResp
-	lastCmdContext map[int64]OpContext
+	LastCmdContext map[int64]OpContext
 	lastApplied    int
-
-	// for debug
-	lockStart time.Time
-	lockEnd   time.Time
-	lockName  string
-}
-
-func (kv *KVServer) lock(m string) {
-	kv.mu.Lock()
-	kv.lockStart = time.Now()
-	kv.lockName = m
-}
-
-func (kv *KVServer) unlock(m string) {
-	kv.lockEnd = time.Now()
-	duration := kv.lockEnd.Sub(kv.lockStart)
-	kv.lockName = ""
-	kv.mu.Unlock()
-	if duration > MaxLockTime {
-		utils.Debug(utils.DServer, "S%d lock %s too long: %s", kv.me, m, duration)
-	}
 }
 
 //
@@ -100,10 +79,13 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
-	kv.kvMap = NewKV()
+	kv.KvMap = NewKV()
 	kv.cmdRespChans = make(map[IndexAndTerm]chan OpResp)
-	kv.lastCmdContext = make(map[int64]OpContext)
+	kv.LastCmdContext = make(map[int64]OpContext)
 	kv.lastApplied = 0
+
+	// load data from persister
+	kv.setSnapshot(persister.ReadSnapshot())
 
 	// long-time goroutines
 	go kv.applier()
@@ -115,14 +97,14 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	defer utils.Debug(utils.DWarn, "S%d args: %+v reply: %+v", kv.me, args, reply)
 
-	kv.lock("isDuplicate")
+	kv.mu.Lock()
 	if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
-		context := kv.lastCmdContext[args.ClientId]
-		reply.Value, reply.Err = context.reply.Value, context.reply.Err
-		kv.unlock("isDuplicate")
+		context := kv.LastCmdContext[args.ClientId]
+		reply.Value, reply.Err = context.Reply.Value, context.Reply.Err
+		kv.mu.Unlock()
 		return
 	}
-	kv.unlock("isDuplicate")
+	kv.mu.Unlock()
 
 	index, term, is_leader := kv.rf.Start(*args)
 	if !is_leader {
@@ -130,17 +112,17 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 		return
 	}
 
-	kv.lock("create chan")
+	kv.mu.Lock()
 	it := IndexAndTerm{index, term}
 	ch := make(chan OpResp, 1)
 	kv.cmdRespChans[it] = ch
-	kv.unlock("create chan")
+	kv.mu.Unlock()
 
 	defer func() {
-		kv.lock("delete chan")
+		kv.mu.Lock()
 		// close(kv.cmdRespChans[index])
 		delete(kv.cmdRespChans, it)
-		kv.unlock("delete chan")
+		kv.mu.Unlock()
 	}()
 
 	t := time.NewTimer(cmd_timeout)
