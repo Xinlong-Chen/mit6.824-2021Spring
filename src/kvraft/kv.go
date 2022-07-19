@@ -28,3 +28,19 @@ func (kv *KV) Get(key string) (string, Err) {
 	}
 	return "", ErrNoKey
 }
+
+func (kv *KVServer) Opt(cmd Op) (string, Err) {
+	switch cmd.OpType {
+	case OpGet:
+		value, err := kv.kvMap.Get(cmd.Key)
+		return value, err
+	case OpPut:
+		err := kv.kvMap.Put(cmd.Key, cmd.Value)
+		return "", err
+	case OpAppend:
+		err := kv.kvMap.Append(cmd.Key, cmd.Value)
+		return "", err
+	default:
+		return "", OK
+	}
+}
