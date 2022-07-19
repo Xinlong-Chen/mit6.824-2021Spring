@@ -51,6 +51,11 @@ type OpContext struct {
 	reply OpResp
 }
 
+type IndexAndTerm struct {
+	index int
+	term  int
+}
+
 const (
 	retry_timeout      time.Duration = time.Duration(1) * time.Millisecond
 	cmd_timeout        time.Duration = time.Duration(2) * time.Second

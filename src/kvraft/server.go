@@ -24,7 +24,7 @@ type KVServer struct {
 
 	// Your definitions here.
 	kvMap          *KV
-	cmdRespChans   map[int]chan OpResp
+	cmdRespChans   map[IndexAndTerm]chan OpResp
 	lastCmdContext map[int64]OpContext
 	lastApplied    int
 
@@ -101,7 +101,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// You may need initialization code here.
 	kv.kvMap = NewKV()
-	kv.cmdRespChans = make(map[int]chan OpResp)
+	kv.cmdRespChans = make(map[IndexAndTerm]chan OpResp)
 	kv.lastCmdContext = make(map[int64]OpContext)
 	kv.lastApplied = 0
 
@@ -124,21 +124,22 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	}
 	kv.unlock("isDuplicate")
 
-	index, _, is_leader := kv.rf.Start(*args)
+	index, term, is_leader := kv.rf.Start(*args)
 	if !is_leader {
 		reply.Value, reply.Err = "", ErrWrongLeader
 		return
 	}
 
 	kv.lock("create chan")
+	it := IndexAndTerm{index, term}
 	ch := make(chan OpResp, 1)
-	kv.cmdRespChans[index] = ch
+	kv.cmdRespChans[it] = ch
 	kv.unlock("create chan")
 
 	defer func() {
 		kv.lock("delete chan")
 		// close(kv.cmdRespChans[index])
-		delete(kv.cmdRespChans, index)
+		delete(kv.cmdRespChans, it)
 		kv.unlock("delete chan")
 	}()
 
@@ -163,7 +164,6 @@ func (kv *KVServer) applier() {
 			if msg.SnapshotValid {
 
 			} else if msg.CommandValid {
-				_, isLeader := kv.rf.GetState()
 
 				kv.lock("apply msg")
 
@@ -189,13 +189,15 @@ func (kv *KVServer) applier() {
 					}
 				}
 
+				term, isLeader := kv.rf.GetState()
 				if !isLeader {
 					utils.Debug(utils.DWarn, "S%d not leader, not notify", kv.me)
 					kv.unlock("apply msg")
 					continue
 				}
 
-				ch, ok := kv.cmdRespChans[msg.CommandIndex]
+				it := IndexAndTerm{msg.CommandIndex, term}
+				ch, ok := kv.cmdRespChans[it]
 				if !ok {
 					utils.Debug(utils.DWarn, "S%d don't have channel to notify %+v", kv.me, msg)
 					kv.unlock("apply msg")
