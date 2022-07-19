@@ -14,7 +14,7 @@ type Err string
 
 // Put or Append
 type CmdArgs struct {
-	Cmd Op
+	Cmd      Op
 	ClientId int64
 	SeqId    int64
 }
@@ -57,6 +57,7 @@ type IndexAndTerm struct {
 }
 
 const (
-	retry_timeout      time.Duration = time.Duration(1) * time.Millisecond
-	cmd_timeout        time.Duration = time.Duration(2) * time.Second
+	retry_timeout time.Duration = time.Duration(1) * time.Millisecond
+	cmd_timeout   time.Duration = time.Duration(2) * time.Second
+	gap_time      time.Duration = time.Duration(5) * time.Millisecond
 )

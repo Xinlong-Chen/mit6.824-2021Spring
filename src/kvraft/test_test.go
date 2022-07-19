@@ -381,7 +381,7 @@ func GenericTest(t *testing.T, part string, nclients int, nservers int, unreliab
 		}
 	}
 
-	fmt.Printf("opLog: %+v\n", opLog)
+	// fmt.Printf("opLog: %+v\n", opLog)
 	res, info := porcupine.CheckOperationsVerbose(models.KvModel, opLog.Read(), linearizabilityCheckTimeout)
 	if res == porcupine.Illegal {
 		file, err := ioutil.TempFile("", "*.html")

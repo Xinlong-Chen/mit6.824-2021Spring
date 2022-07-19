@@ -146,13 +146,35 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	t := time.NewTimer(cmd_timeout)
 	defer t.Stop()
 
-	select {
-	case resp := <-ch:
-		utils.Debug(utils.DServer, "S%d have applied, resp: %+v", kv.me, resp)
-		reply.Value, reply.Err = resp.Value, resp.Err
-	case <-t.C:
-		utils.Debug(utils.DServer, "S%d timeout", kv.me)
-		reply.Value, reply.Err = "", ErrTimeout
+	for {
+		kv.mu.Lock()
+		select {
+		case resp := <-ch:
+			utils.Debug(utils.DServer, "S%d have applied, resp: %+v", kv.me, resp)
+			reply.Value, reply.Err = resp.Value, resp.Err
+			kv.mu.Unlock()
+			return
+		case <-t.C:
+		priority:
+			for {
+				select {
+				case resp := <-ch:
+					utils.Debug(utils.DServer, "S%d have applied, resp: %+v", kv.me, resp)
+					reply.Value, reply.Err = resp.Value, resp.Err
+					kv.mu.Unlock()
+					return
+				default:
+					break priority
+				}
+			}
+			utils.Debug(utils.DServer, "S%d timeout", kv.me)
+			reply.Value, reply.Err = "", ErrTimeout
+			kv.mu.Unlock()
+			return
+		default:
+			kv.mu.Unlock()
+			time.Sleep(gap_time)
+		}
 	}
 }
 
