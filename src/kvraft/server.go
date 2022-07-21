@@ -41,8 +41,12 @@ type KVServer struct {
 //
 func (kv *KVServer) Kill() {
 	atomic.StoreInt32(&kv.dead, 1)
-	kv.rf.Kill()
 	// Your code here, if desired.
+	kv.mu.Lock()
+	defer kv.mu.Unlock()
+	//fmt.Printf("---kill\n")
+	kv.doSnapshot(kv.lastApplied)
+	kv.rf.Kill()
 }
 
 func (kv *KVServer) killed() bool {
@@ -89,6 +93,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// long-time goroutines
 	go kv.applier()
+	go kv.snapshoter()
 
 	return kv
 }

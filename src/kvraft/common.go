@@ -57,7 +57,8 @@ type IndexAndTerm struct {
 }
 
 const (
-	retry_timeout time.Duration = time.Duration(1) * time.Millisecond
-	cmd_timeout   time.Duration = time.Duration(2) * time.Second
-	gap_time      time.Duration = time.Duration(5) * time.Millisecond
+	retry_timeout     time.Duration = time.Duration(1) * time.Millisecond
+	cmd_timeout       time.Duration = time.Duration(2) * time.Second
+	gap_time          time.Duration = time.Duration(5) * time.Millisecond
+	snapshot_gap_time time.Duration = time.Duration(10) * time.Millisecond
 )

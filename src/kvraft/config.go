@@ -85,11 +85,13 @@ func (cfg *config) cleanup() {
 // Maximum log size across all servers
 func (cfg *config) LogSize() int {
 	logsize := 0
+	//fmt.Printf("--------\n")
 	for i := 0; i < cfg.n; i++ {
 		n := cfg.saved[i].RaftStateSize()
 		if n > logsize {
 			logsize = n
 		}
+		//fmt.Printf("S%d log size:%d\n", i, n)
 	}
 	return logsize
 }

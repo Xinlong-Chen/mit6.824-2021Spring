@@ -15,6 +15,30 @@
 
 ./dstest -p 10  Unreliable3A  -n 100
 
+./dstest -p 20  Basic3A \
+                Speed3A \
+                Concurrent3A \
+                Unreliable3A \
+                UnreliableOneKey3A \
+                OnePartition3A \
+                ManyPartitionsOneClient3A \
+                ManyPartitionsManyClients3A \
+                PersistOneClient3A \
+                PersistConcurrent3A \
+                PersistConcurrentUnreliable3A \
+                PersistPartition3A \
+                PersistPartitionUnreliable3A \
+                PersistPartitionUnreliableLinearizable3A \
+                SnapshotRPC3B \
+                SnapshotSize3B \
+                Speed3B \
+                SnapshotRecover3B \
+                SnapshotRecoverManyClients3B \
+                SnapshotUnreliable3B \
+                SnapshotUnreliableRecover3B \
+                SnapshotUnreliableRecoverConcurrentPartition3B \
+                SnapshotUnreliableRecoverConcurrentPartitionLinearizable3B -n 1000
+
 ./dstest -p 20  SnapshotRPC3B \
                 SnapshotSize3B \
                 Speed3B \
@@ -23,7 +47,7 @@
                 SnapshotUnreliable3B \
                 SnapshotUnreliableRecover3B \
                 SnapshotUnreliableRecoverConcurrentPartition3B \
-                SnapshotUnreliableRecoverConcurrentPartitionLinearizable3B -n 100
+                SnapshotUnreliableRecoverConcurrentPartitionLinearizable3B -n 300
 
 python3 dstest -p 12  Basic3A \
                 Speed3A \

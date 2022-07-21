@@ -8,6 +8,8 @@ import (
 )
 
 func (rf *Raft) RaftPersistSize() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 	return rf.persister.RaftStateSize()
 }
 

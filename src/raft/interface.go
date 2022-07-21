@@ -101,10 +101,11 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	if err < 0 {
 		idx = len(rf.log) - 1
 	}
-
+	//before := len(rf.log)
 	// let last snapshot node as dummy node
 	rf.log = rf.log[idx:]
 	rf.log[0].Cmd = nil // dummy node
 	rf.persistSnapshot(snapshot)
+	//fmt.Printf("S%d idx: %d log len before: %d after: %d\n", rf.me, idx, before, len(rf.log))
 	// utils.Debug(utils.DSnap, "S%d call Snapshot success, index: %d {%+v}", rf.me, index, rf.log)
 }

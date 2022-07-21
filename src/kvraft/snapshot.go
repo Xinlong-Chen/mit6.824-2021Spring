@@ -3,15 +3,27 @@ package kvraft
 import (
 	"bytes"
 	"log"
+	"time"
 
 	"6.824/labgob"
 	"6.824/utils"
 )
 
-const threshold int = 32
+const threshold float32 = 0.8
+
+func (kv *KVServer) snapshoter() {
+	for kv.killed() == false {
+		kv.mu.Lock()
+		if kv.isNeedSnapshot() {
+			kv.doSnapshot(kv.lastApplied)
+		}
+		kv.mu.Unlock()
+		time.Sleep(snapshot_gap_time)
+	}
+}
 
 func (kv *KVServer) isNeedSnapshot() bool {
-	if kv.maxraftstate != -1 && kv.rf.RaftPersistSize()+threshold > kv.maxraftstate {
+	if kv.maxraftstate != -1 && kv.rf.RaftPersistSize() > int(threshold*float32(kv.maxraftstate)) {
 		return true
 	}
 	return false
@@ -25,9 +37,9 @@ func (kv *KVServer) doSnapshot(commandIndex int) {
 		e.Encode(kv.LastCmdContext) != nil {
 		panic("server doSnapshot encode error")
 	}
-	// fmt.Printf("S%d doSnapshot before: %d\n", kv.me, kv.rf.RaftPersistSize())
+	// fmt.Printf("S%d commandIndex:%d doSnapshot before: %d\n", kv.me, commandIndex, kv.rf.RaftPersistSize())
 	kv.rf.Snapshot(commandIndex, w.Bytes())
-	// fmt.Printf("S%d doSnapshot after: %d\n", kv.me, kv.rf.RaftPersistSize())
+	// fmt.Printf("S%d commandIndex:%d doSnapshot after: %d\n", kv.me, commandIndex, kv.rf.RaftPersistSize())
 }
 
 func (kv *KVServer) setSnapshot(snapshot []byte) {

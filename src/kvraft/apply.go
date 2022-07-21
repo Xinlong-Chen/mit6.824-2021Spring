@@ -1,6 +1,7 @@
 package kvraft
 
 import "6.824/utils"
+import "time"
 
 func (kv *KVServer) applier() {
 	for kv.killed() == false {
@@ -43,23 +44,18 @@ func (kv *KVServer) applier() {
 				if isLeader {
 					it := IndexAndTerm{msg.CommandIndex, term}
 					ch, ok := kv.cmdRespChans[it]
-					if !ok {
-						utils.Debug(utils.DWarn, "S%d don't have channel to notify %+v", kv.me, msg)
-						kv.mu.Unlock()
-						continue
+					if ok {
+						ch <- resp
 					}
-					ch <- resp
-				}
-
-				if kv.isNeedSnapshot() {
-					kv.doSnapshot(msg.CommandIndex)
 				}
 
 				kv.mu.Unlock()
 			} else {
 				// ignore
 			}
-		}
+		default:
+			time.Sleep(gap_time)
+		} 
 	}
 }
 
