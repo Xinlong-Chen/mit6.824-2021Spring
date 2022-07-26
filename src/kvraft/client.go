@@ -46,20 +46,17 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // arguments. and reply must be passed as a pointer.
 //
 func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
-	cmd := Op{
-		Key:    key,
-		Value:  value,
-		OpType: OpType,
-	}
-
 	ck.seqId += 1
 	args := CmdArgs{
 		SeqId:    ck.seqId,
 		ClientId: ck.clientId,
-		Cmd:      cmd,
+		Key:      key,
+		Value:    value,
+		OpType:   OpType,
 	}
 
-	for {
+	t0 := time.Now()
+	for time.Since(t0).Seconds() < 30 {
 		reply := CmdReply{}
 
 		ok := ck.servers[ck.leaderId].Call("KVServer.Command", &args, &reply)
@@ -79,6 +76,8 @@ func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
 		ck.leaderId = (ck.leaderId + 1) % len(ck.servers)
 		time.Sleep(retry_timeout)
 	}
+	panic("30s not reply")
+	return ""
 }
 
 func (ck *Clerk) Get(key string) string {

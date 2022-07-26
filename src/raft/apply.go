@@ -17,6 +17,7 @@ type ApplyMsg struct {
 	CommandValid bool
 	Command      interface{}
 	CommandIndex int
+	CommandTerm  int
 
 	// For 2D:
 	SnapshotValid bool
@@ -44,6 +45,7 @@ func (rf *Raft) applyLog() {
 				CommandValid: true,
 				Command:      entry.Cmd,
 				CommandIndex: entry.Index,
+				CommandTerm:  entry.Term,
 			}
 		}
 

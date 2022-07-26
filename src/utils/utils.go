@@ -7,7 +7,7 @@ import (
 )
 
 // Debugging
-const debug = false
+const debug = true
 
 type logTopic string
 

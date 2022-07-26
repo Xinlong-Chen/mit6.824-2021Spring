@@ -115,7 +115,7 @@ func (rf *Raft) appendTo(peer int) {
 			rf.nextIndex[peer] = reply.XIndex
 		}
 	} else {
-		rf.nextIndex[peer] -= 1
+		rf.nextIndex[peer] = reply.XIndex
 	}
 
 	// utils.Debug(utils.DTrace, "S%d nextIndex:{%+v}", rf.me, rf.nextIndex)

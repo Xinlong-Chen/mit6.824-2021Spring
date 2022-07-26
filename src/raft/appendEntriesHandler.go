@@ -44,7 +44,7 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	// }
 
 	if args.PrevLogIndex < rf.frontLogIndex() {
-		reply.XTerm, reply.Success = -2, false
+		reply.XTerm, reply.XIndex, reply.Success = -2, rf.frontLogIndex() + 1, false
 		utils.Debug(utils.DInfo, "S%d args's prevLogIndex too smaller(%v < %v)", rf.me, args.PrevLogIndex, rf.frontLogIndex())
 		return
 	}

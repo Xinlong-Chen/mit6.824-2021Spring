@@ -10,12 +10,14 @@ import (
 )
 
 const threshold float32 = 0.8
+const snapshotLogGap int = 3
 
 func (kv *KVServer) snapshoter() {
 	for kv.killed() == false {
 		kv.mu.Lock()
-		if kv.isNeedSnapshot() {
+		if kv.isNeedSnapshot() && kv.lastApplied > kv.lastSnapshot + snapshotLogGap {
 			kv.doSnapshot(kv.lastApplied)
+			kv.lastSnapshot = kv.lastApplied
 		}
 		kv.mu.Unlock()
 		time.Sleep(snapshot_gap_time)

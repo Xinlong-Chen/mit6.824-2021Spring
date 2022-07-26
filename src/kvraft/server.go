@@ -11,8 +11,6 @@ import (
 	"6.824/utils"
 )
 
-const MaxLockTime = time.Millisecond * 10 // debug
-
 type KVServer struct {
 	mu      sync.Mutex
 	me      int
@@ -27,6 +25,7 @@ type KVServer struct {
 	cmdRespChans   map[IndexAndTerm]chan OpResp
 	LastCmdContext map[int64]OpContext
 	lastApplied    int
+	lastSnapshot   int
 }
 
 //
@@ -71,7 +70,7 @@ func (kv *KVServer) killed() bool {
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
-	labgob.Register(CmdArgs{})
+	labgob.Register(Op{})
 
 	kv := new(KVServer)
 	kv.me = me
@@ -79,7 +78,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// You may need initialization code here.
 
-	kv.applyCh = make(chan raft.ApplyMsg)
+	kv.applyCh = make(chan raft.ApplyMsg, 5)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
@@ -87,6 +86,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.cmdRespChans = make(map[IndexAndTerm]chan OpResp)
 	kv.LastCmdContext = make(map[int64]OpContext)
 	kv.lastApplied = 0
+	kv.lastSnapshot = 0
 
 	// load data from persister
 	kv.setSnapshot(persister.ReadSnapshot())
@@ -103,7 +103,7 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	defer utils.Debug(utils.DWarn, "S%d args: %+v reply: %+v", kv.me, args, reply)
 
 	kv.mu.Lock()
-	if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
+	if args.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
 		context := kv.LastCmdContext[args.ClientId]
 		reply.Value, reply.Err = context.Reply.Value, context.Reply.Err
 		kv.mu.Unlock()
@@ -111,7 +111,14 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 	}
 	kv.mu.Unlock()
 
-	index, term, is_leader := kv.rf.Start(*args)
+	cmd := Op{
+		ClientId: args.ClientId,
+		SeqId:    args.SeqId,
+		OpType:   args.OpType,
+		Key:      args.Key,
+		Value:    args.Value,
+	}
+	index, term, is_leader := kv.rf.Start(cmd)
 	if !is_leader {
 		reply.Value, reply.Err = "", ErrWrongLeader
 		return

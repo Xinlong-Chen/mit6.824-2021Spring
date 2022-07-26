@@ -27,25 +27,32 @@ func (kv *KVServer) applier() {
 				kv.lastApplied = msg.CommandIndex
 
 				var resp OpResp
-				args := msg.Command.(CmdArgs)
+				cmd := msg.Command.(Op)
 
-				if args.Cmd.OpType != OpGet && kv.isDuplicate(args.ClientId, args.SeqId) {
-					context := kv.LastCmdContext[args.ClientId]
+				if cmd.OpType != OpGet && kv.isDuplicate(cmd.ClientId, cmd.SeqId) {
+					context := kv.LastCmdContext[cmd.ClientId]
 					resp = context.Reply
 				} else {
-					resp.Value, resp.Err = kv.Opt(args.Cmd)
-					kv.LastCmdContext[args.ClientId] = OpContext{
-						SeqId: args.SeqId,
+					resp.Value, resp.Err = kv.Opt(cmd)
+					kv.LastCmdContext[cmd.ClientId] = OpContext{
+						SeqId: cmd.SeqId,
 						Reply: resp,
 					}
 				}
 
 				term, isLeader := kv.rf.GetState()
-				if isLeader {
-					it := IndexAndTerm{msg.CommandIndex, term}
-					ch, ok := kv.cmdRespChans[it]
-					if ok {
-						ch <- resp
+
+				if !isLeader || term != msg.CommandTerm {
+					kv.mu.Unlock()
+					continue
+				}
+
+				it := IndexAndTerm{msg.CommandIndex, term}
+				ch, ok := kv.cmdRespChans[it]
+				if ok {
+					select {
+					case ch <- resp:
+					case <- time.After(10 * time.Millisecond):
 					}
 				}
 
@@ -55,7 +62,7 @@ func (kv *KVServer) applier() {
 			}
 		default:
 			time.Sleep(gap_time)
-		} 
+		}
 	}
 }
 

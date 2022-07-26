@@ -13,8 +13,10 @@ const (
 type Err string
 
 // Put or Append
-type CmdArgs struct {
-	Cmd      Op
+type CmdArgs struct {	
+	OpType OPType
+	Key    string
+	Value  string
 	ClientId int64
 	SeqId    int64
 }
@@ -39,6 +41,8 @@ type Op struct {
 	OpType OPType
 	Key    string
 	Value  string
+	ClientId int64
+	SeqId    int64
 }
 
 type OpResp struct {
