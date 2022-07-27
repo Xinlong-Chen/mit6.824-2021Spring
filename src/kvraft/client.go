@@ -56,7 +56,7 @@ func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
 	}
 
 	t0 := time.Now()
-	for time.Since(t0).Seconds() < 30 {
+	for time.Since(t0).Seconds() < 10 {
 		reply := CmdReply{}
 
 		ok := ck.servers[ck.leaderId].Call("KVServer.Command", &args, &reply)
@@ -76,7 +76,7 @@ func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
 		ck.leaderId = (ck.leaderId + 1) % len(ck.servers)
 		time.Sleep(retry_timeout)
 	}
-	panic("30s not reply")
+	panic("10s not reply")
 	return ""
 }
 

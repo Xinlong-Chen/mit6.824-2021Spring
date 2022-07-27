@@ -39,9 +39,7 @@ func (kv *KVServer) doSnapshot(commandIndex int) {
 		e.Encode(kv.LastCmdContext) != nil {
 		panic("server doSnapshot encode error")
 	}
-	// fmt.Printf("S%d commandIndex:%d doSnapshot before: %d\n", kv.me, commandIndex, kv.rf.RaftPersistSize())
 	kv.rf.Snapshot(commandIndex, w.Bytes())
-	// fmt.Printf("S%d commandIndex:%d doSnapshot after: %d\n", kv.me, commandIndex, kv.rf.RaftPersistSize())
 }
 
 func (kv *KVServer) setSnapshot(snapshot []byte) {

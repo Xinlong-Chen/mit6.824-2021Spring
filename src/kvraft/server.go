@@ -135,6 +135,7 @@ func (kv *KVServer) Command(args *CmdArgs, reply *CmdReply) {
 		// close(kv.cmdRespChans[index])
 		delete(kv.cmdRespChans, it)
 		kv.mu.Unlock()
+		close(ch)
 	}()
 
 	t := time.NewTimer(cmd_timeout)
