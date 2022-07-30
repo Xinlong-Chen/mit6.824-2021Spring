@@ -1,73 +1,61 @@
 package shardctrler
 
-//
-// Shard controler: assigns shards to replication groups.
-//
-// RPC interface:
-// Join(servers) -- add a set of groups (gid -> server-list mapping).
-// Leave(gids) -- delete a set of groups.
-// Move(shard, gid) -- hand off one shard from current owner to gid.
-// Query(num) -> fetch Config # num, or latest config if num==-1.
-//
-// A Config (configuration) describes a set of replica groups, and the
-// replica group responsible for each shard. Configs are numbered. Config
-// #0 is the initial configuration, with no groups and all shards
-// assigned to group 0 (the invalid group).
-//
-// You will need to add fields to the RPC argument structs.
-//
-
-// The number of shards.
-const NShards = 10
-
-// A configuration -- an assignment of shards to groups.
-// Please don't change this.
-type Config struct {
-	Num    int              // config number
-	Shards [NShards]int     // shard -> gid
-	Groups map[int][]string // gid -> servers[]
-}
+import "time"
 
 const (
-	OK = "OK"
+	OK             = "OK"
+	ErrWrongLeader = "ErrWrongLeader"
+	ErrOpt         = "ErrOpt"
+	ErrTimeout     = "ErrTimeout"
 )
 
 type Err string
 
-type JoinArgs struct {
-	Servers map[int][]string // new GID -> servers mappings
+type OpType string
+
+const (
+	OpJoin  OpType = "join"
+	OpLeave OpType = "leave"
+	OpMove  OpType = "move"
+	OpQuery OpType = "query"
+)
+
+type CommandArgs struct {
+	Op       OpType
+	ClientId int64
+	SeqId    int64
+	Servers  map[int][]string // for Join
+	GIDs     []int            // for Leave
+	Shard    int              // for Move
+	GID      int              // for Move
+	Num      int              // for Query
 }
 
-type JoinReply struct {
-	WrongLeader bool
-	Err         Err
+type CommandReply struct {
+	Err    Err
+	Config Config
 }
 
-type LeaveArgs struct {
-	GIDs []int
+type Op CommandArgs
+
+type OpResp struct {
+	Err    Err
+	Config Config
 }
 
-type LeaveReply struct {
-	WrongLeader bool
-	Err         Err
+type OpContext struct {
+	SeqId int64
+	Reply OpResp
 }
 
-type MoveArgs struct {
-	Shard int
-	GID   int
+type IndexAndTerm struct {
+	index int
+	term  int
 }
 
-type MoveReply struct {
-	WrongLeader bool
-	Err         Err
-}
-
-type QueryArgs struct {
-	Num int // desired config number
-}
-
-type QueryReply struct {
-	WrongLeader bool
-	Err         Err
-	Config      Config
-}
+const (
+	retry_timeout     time.Duration = time.Duration(1) * time.Millisecond
+	cmd_timeout       time.Duration = time.Duration(2) * time.Second
+	gap_time          time.Duration = time.Duration(5) * time.Millisecond
+	snapshot_gap_time time.Duration = time.Duration(10) * time.Millisecond
+)
