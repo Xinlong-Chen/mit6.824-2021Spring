@@ -32,6 +32,22 @@ type Config struct {
 	Groups map[int][]string // gid -> servers[]
 }
 
+func (cfg *Config) DeepCopy() Config {
+	ret := Config{
+		Num:    cfg.Num,
+		Shards: [NShards]int{},
+		Groups: make(map[int][]string),
+	}
+
+	for k, v := range cfg.Groups {
+		ret.Groups[k] = v
+	}
+	for i := range cfg.Shards {
+		ret.Shards[i] = cfg.Shards[i]
+	}
+	return ret
+}
+
 // --------------------------------------------------------------------- //
 
 const magicNullGid = 0
@@ -136,24 +152,8 @@ func (cm *ConfigModel) reBalance(config *Config) {
 	}
 }
 
-func (cm *ConfigModel) deepCopy(config *Config) Config {
-	ret := Config{
-		Num:    config.Num,
-		Shards: [NShards]int{},
-		Groups: make(map[int][]string),
-	}
-
-	for k, v := range config.Groups {
-		ret.Groups[k] = v
-	}
-	for i := range config.Shards {
-		ret.Shards[i] = config.Shards[i]
-	}
-	return ret
-}
-
 func (cm *ConfigModel) join(servers map[int][]string) Err {
-	newConfig := cm.deepCopy(&cm.configs[len(cm.configs)-1])
+	newConfig := cm.configs[len(cm.configs)-1].DeepCopy()
 	newConfig.Num = len(cm.configs)
 
 	for gid, servers_iter := range servers {
@@ -172,7 +172,7 @@ func (cm *ConfigModel) join(servers map[int][]string) Err {
 }
 
 func (cm *ConfigModel) leave(GIDs []int) Err {
-	newConfig := cm.deepCopy(&cm.configs[len(cm.configs)-1])
+	newConfig := cm.configs[len(cm.configs)-1].DeepCopy()
 	newConfig.Num = len(cm.configs)
 
 	group2shard := cm.getGroup2Shards(&newConfig)
@@ -193,7 +193,7 @@ func (cm *ConfigModel) leave(GIDs []int) Err {
 }
 
 func (cm *ConfigModel) move(shard int, gid int) Err {
-	newConfig := cm.deepCopy(&cm.configs[len(cm.configs)-1])
+	newConfig := cm.configs[len(cm.configs)-1].DeepCopy()
 	newConfig.Num = len(cm.configs)
 	newConfig.Shards[shard] = gid
 	cm.configs = append(cm.configs, newConfig)
@@ -202,9 +202,9 @@ func (cm *ConfigModel) move(shard int, gid int) Err {
 
 func (cm *ConfigModel) query(num int) (Config, Err) {
 	if num < 0 || num >= len(cm.configs) {
-		return cm.deepCopy(&cm.configs[len(cm.configs)-1]), OK
+		return cm.configs[len(cm.configs)-1].DeepCopy(), OK
 	}
-	return cm.deepCopy(&cm.configs[num]), OK
+	return cm.configs[num].DeepCopy(), OK
 }
 
 func (cm *ConfigModel) isLegal(opType OpType) bool {

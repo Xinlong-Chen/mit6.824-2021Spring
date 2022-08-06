@@ -1,6 +1,10 @@
 package shardkv
 
-import "time"
+import (
+	"time"
+
+	"6.824/shardctrler"
+)
 
 func (kv *ShardKV) isDuplicate(clientId int64, seqId int64) bool {
 	context, ok := kv.LastCmdContext[clientId]
@@ -35,21 +39,14 @@ func (kv *ShardKV) applier() {
 				kv.lastApplied = msg.CommandIndex
 
 				var resp OpResp
-				cmd := msg.Command.(Command).Data.(CmdArgs)
-
-				if cmd.OpType != OpGet && kv.isDuplicate(cmd.ClientId, cmd.SeqId) {
-					context := kv.LastCmdContext[cmd.ClientId]
-					resp = context.Reply
-				} else {
-					shard := key2shard(cmd.Key)
-					if _, ok := kv.shards[shard]; !ok {
-						kv.shards[shard] = NewShard()
-					}
-					resp.Value, resp.Err = kv.shards[shard].Opt(&cmd)
-					kv.LastCmdContext[cmd.ClientId] = OpContext{
-						SeqId: cmd.SeqId,
-						Reply: resp,
-					}
+				command := msg.Command.(Command)
+				switch command.Op {
+				case Operation:
+					cmd := command.Data.(CmdArgs)
+					resp = *kv.applyOperation(&msg, &cmd)
+				case Configuration:
+					nextConfig := command.Data.(shardctrler.Config)
+					resp = *kv.applyConfiguration(&nextConfig)
 				}
 
 				term, isLeader := kv.rf.GetState()

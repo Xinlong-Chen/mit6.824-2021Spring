@@ -43,7 +43,9 @@ func (shard *Shard) deepCopy() map[string]string {
 	return newShard
 }
 
-func (shard *Shard) Opt(cmd *CmdArgs) (string, Err) {
+func (kv *ShardKV) Opt(cmd *CmdArgs, shardID int) (string, Err) {
+	shard := kv.shards[shardID]
+
 	switch cmd.OpType {
 	case OpGet:
 		value, err := shard.Get(cmd.Key)
