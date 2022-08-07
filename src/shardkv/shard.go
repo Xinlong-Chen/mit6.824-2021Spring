@@ -14,8 +14,8 @@ type Shard struct {
 	Status ShardStatus
 }
 
-func NewShard() *Shard {
-	return &Shard{make(map[string]string), Serving}
+func NewShard(status ShardStatus) *Shard {
+	return &Shard{make(map[string]string), status}
 }
 
 func (shard *Shard) Get(key string) (string, Err) {

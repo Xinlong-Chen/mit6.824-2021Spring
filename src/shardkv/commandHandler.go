@@ -17,9 +17,6 @@ func (kv *ShardKV) Command(args *CmdArgs, reply *CmdReply) {
 }
 
 func (kv *ShardKV) canServe(shardID int) bool {
-	if _, ok := kv.shards[shardID]; !ok {
-		kv.shards[shardID] = NewShard()
-	}
 	return kv.currentConfig.Shards[shardID] == kv.gid && (kv.shards[shardID].Status == Serving || kv.shards[shardID].Status == GCing)
 }
 
