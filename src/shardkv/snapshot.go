@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"6.824/labgob"
-	"6.824/utils"
 )
 
 const threshold float32 = 0.8
@@ -32,11 +31,9 @@ func (kv *ShardKV) isNeedSnapshot() bool {
 }
 
 func (kv *ShardKV) doSnapshot(commandIndex int) {
-	utils.Debug(utils.DServer, "S%d doSnapshot", kv.me)
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
-	if e.Encode(kv.shards) != nil ||
-		e.Encode(kv.LastCmdContext) != nil {
+	if e.Encode(kv.shards) != nil {
 		panic("server doSnapshot encode error")
 	}
 	kv.rf.Snapshot(commandIndex, w.Bytes())
@@ -47,18 +44,14 @@ func (kv *ShardKV) setSnapshot(snapshot []byte) {
 		return
 	}
 
-	utils.Debug(utils.DServer, "S%d setSnapshot", kv.me)
 	r := bytes.NewBuffer(snapshot)
 	d := labgob.NewDecoder(r)
 
 	var shards map[int]*Shard
-	var lastCmdContext map[int64]OpContext
 
-	if d.Decode(&shards) != nil ||
-		d.Decode(&lastCmdContext) != nil {
+	if d.Decode(&shards) != nil {
 		log.Fatalf("server setSnapshot decode error\n")
 	} else {
 		kv.shards = shards
-		kv.LastCmdContext = lastCmdContext
 	}
 }

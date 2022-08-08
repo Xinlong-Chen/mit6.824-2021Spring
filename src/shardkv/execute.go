@@ -2,7 +2,7 @@ package shardkv
 
 import "time"
 
-func (kv *ShardKV) Execute(cmd Command, reply *CmdReply) {
+func (kv *ShardKV) Execute(cmd Command, reply *OpResp) {
 	index, term, is_leader := kv.rf.Start(cmd)
 	if !is_leader {
 		reply.Value, reply.Err = "", ErrWrongLeader

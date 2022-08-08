@@ -10,12 +10,13 @@ const (
 )
 
 type Shard struct {
-	KV     map[string]string
-	Status ShardStatus
+	KV             map[string]string
+	Status         ShardStatus
+	LastCmdContext map[int64]OpContext
 }
 
 func NewShard(status ShardStatus) *Shard {
-	return &Shard{make(map[string]string), status}
+	return &Shard{make(map[string]string), status, make(map[int64]OpContext)}
 }
 
 func (shard *Shard) Get(key string) (string, Err) {
@@ -35,10 +36,13 @@ func (shard *Shard) Append(key, value string) Err {
 	return OK
 }
 
-func (shard *Shard) deepCopy() map[string]string {
-	newShard := make(map[string]string)
+func (shard *Shard) deepCopy() *Shard {
+	newShard := NewShard(Serving)
 	for k, v := range shard.KV {
-		newShard[k] = v
+		newShard.KV[k] = v
+	}
+	for id, context := range shard.LastCmdContext {
+		newShard.LastCmdContext[id] = context
 	}
 	return newShard
 }

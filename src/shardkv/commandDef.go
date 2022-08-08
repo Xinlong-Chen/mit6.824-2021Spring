@@ -23,13 +23,13 @@ func NewConfigurationCommand(config *shardctrler.Config) Command {
 	return Command{Configuration, *config}
 }
 
-// func NewInsertShardsCommand(response *ShardOperationResponse) Command {
-// 	return Command{InsertShards, *response}
-// }
+func NewInsertShardsCommand(pullReply *PullDataReply) Command {
+	return Command{InsertShards, *pullReply}
+}
 
-// func NewDeleteShardsCommand(request *ShardOperationRequest) Command {
-// 	return Command{DeleteShards, *request}
-// }
+func NewDeleteShardsCommand(pullArgs *PullDataArgs) Command {
+	return Command{DeleteShards, *pullArgs}
+}
 
 func NewEmptyEntryCommand() Command {
 	return Command{EmptyEntry, nil}

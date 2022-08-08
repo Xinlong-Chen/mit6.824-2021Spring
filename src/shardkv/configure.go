@@ -9,6 +9,7 @@ func (kv *ShardKV) configureAction() {
 	kv.mu.Lock()
 	for _, shard := range kv.shards {
 		if shard.Status != Serving {
+			Debug(dWarn, "G%+v S%d shard: %+v", kv.gid, kv.me, shard)
 			canPerformNextConfig = false
 			break
 		}
@@ -18,8 +19,10 @@ func (kv *ShardKV) configureAction() {
 	if canPerformNextConfig {
 		nextConfig := kv.sc.Query(currentConfigNum + 1)
 		if nextConfig.Num == currentConfigNum+1 {
-			kv.Execute(NewConfigurationCommand(&nextConfig), &CmdReply{})
+			kv.Execute(NewConfigurationCommand(&nextConfig), &OpResp{})
 		}
+	} else {
+		Debug(dWarn, "G%+v {S%+v} don't need fetch config!", kv.gid, kv.me)
 	}
 }
 
@@ -28,6 +31,7 @@ func (kv *ShardKV) applyConfiguration(nextConfig *shardctrler.Config) *OpResp {
 		kv.updateShardStatus(nextConfig)
 		kv.lastConfig = kv.currentConfig.DeepCopy()
 		kv.currentConfig = nextConfig.DeepCopy()
+		Debug(dWarn, "G%+v {S%+v} applyConfiguration %d is %+v", kv.gid, kv.me, nextConfig.Num, nextConfig)
 		return &OpResp{OK, ""}
 	}
 	return &OpResp{ErrTimeoutReq, ""}
@@ -49,14 +53,14 @@ func (kv *ShardKV) updateShardStatus(nextConfig *shardctrler.Config) {
 	for _, nowShard := range nowShards {
 		if nextConfig.Shards[nowShard] != kv.gid {
 			// BePulling
-			kv.shards[nowShard].Status = Serving
+			kv.shards[nowShard].Status = BePulling
 		}
 	}
 	// get shard
 	for _, newShard := range newShards {
 		if kv.currentConfig.Shards[newShard] != kv.gid {
 			// Pulling
-			kv.shards[newShard] = NewShard(Serving)
+			kv.shards[newShard] = NewShard(Pulling)
 		}
 	}
 }
@@ -69,4 +73,20 @@ func (kv *ShardKV) getAllShards(nextConfig *shardctrler.Config) []int {
 		}
 	}
 	return shards
+}
+
+func (kv *ShardKV) getShardIDsByStatus(status ShardStatus, config *shardctrler.Config) map[int][]int {
+	gid2shardIDs := make(map[int][]int)
+	for shard, _ := range kv.shards {
+		if kv.shards[shard].Status == status {
+			gid := config.Shards[shard]
+			if _, ok := gid2shardIDs[gid]; !ok {
+				vec := [1]int{shard}
+				gid2shardIDs[gid] = vec[:]
+			} else {
+				gid2shardIDs[gid] = append(gid2shardIDs[gid], shard)
+			}
+		}
+	}
+	return gid2shardIDs
 }

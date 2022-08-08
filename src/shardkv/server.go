@@ -11,22 +11,21 @@ import (
 )
 
 type ShardKV struct {
-	mu       sync.Mutex
-	me       int
-	rf       *raft.Raft
-	applyCh  chan raft.ApplyMsg
-	dead     int32 // set by Kill()
-	make_end func(string) *labrpc.ClientEnd
-	gid      int
+	mu      sync.Mutex
+	me      int
+	rf      *raft.Raft
+	applyCh chan raft.ApplyMsg
+	dead    int32 // set by Kill()
+	makeEnd func(string) *labrpc.ClientEnd
+	gid     int
 	// ctrlers      []*labrpc.ClientEnd
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	shards         map[int]*Shard
-	cmdRespChans   map[IndexAndTerm]chan OpResp
-	LastCmdContext map[int64]OpContext
-	lastApplied    int
-	lastSnapshot   int
+	shards       map[int]*Shard
+	cmdRespChans map[IndexAndTerm]chan OpResp
+	lastApplied  int
+	lastSnapshot int
 
 	lastConfig    shardctrler.Config
 	currentConfig shardctrler.Config
@@ -47,6 +46,7 @@ func (kv *ShardKV) Kill() {
 	//fmt.Printf("---kill\n")
 	// kv.doSnapshot(kv.lastApplied)
 	kv.rf.Kill()
+	Debug(dWarn, "G%+v {S%+v} close shards: %+v config: %+v", kv.gid, kv.me, kv.shards, kv.currentConfig)
 }
 
 func (kv *ShardKV) killed() bool {
@@ -82,17 +82,19 @@ func (kv *ShardKV) killed() bool {
 // StartServer() must return quickly, so it should start goroutines
 // for any long-running work.
 //
-func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int, gid int, ctrlers []*labrpc.ClientEnd, make_end func(string) *labrpc.ClientEnd) *ShardKV {
+func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int, gid int, ctrlers []*labrpc.ClientEnd, makeEnd func(string) *labrpc.ClientEnd) *ShardKV {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	labgob.Register(Command{})
 	labgob.Register(CmdArgs{})
 	labgob.Register(shardctrler.Config{})
+	labgob.Register(PullDataReply{})
+	labgob.Register(PullDataArgs{})
 
 	kv := new(ShardKV)
 	kv.me = me
 	kv.maxraftstate = maxraftstate
-	kv.make_end = make_end
+	kv.makeEnd = makeEnd
 	kv.gid = gid
 	// kv.ctrlers = ctrlers
 
@@ -105,7 +107,6 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	// Your initialization code here.
 	kv.shards = make(map[int]*Shard)
 	kv.cmdRespChans = make(map[IndexAndTerm]chan OpResp)
-	kv.LastCmdContext = make(map[int64]OpContext)
 	kv.lastApplied = 0
 	kv.lastSnapshot = 0
 

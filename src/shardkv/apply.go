@@ -6,8 +6,8 @@ import (
 	"6.824/shardctrler"
 )
 
-func (kv *ShardKV) isDuplicate(clientId int64, seqId int64) bool {
-	context, ok := kv.LastCmdContext[clientId]
+func (kv *ShardKV) isDuplicate(shardId int, clientId int64, seqId int64) bool {
+	context, ok := kv.shards[shardId].LastCmdContext[clientId]
 	if !ok {
 		return false
 	}
@@ -47,6 +47,12 @@ func (kv *ShardKV) applier() {
 				case Configuration:
 					nextConfig := command.Data.(shardctrler.Config)
 					resp = *kv.applyConfiguration(&nextConfig)
+				case InsertShards:
+					insertResp := command.Data.(PullDataReply)
+					resp = *kv.applyInsertShards(&insertResp)
+				case DeleteShards:
+					deleteResp := command.Data.(PullDataArgs)
+					resp = *kv.applyDeleteShards(&deleteResp)
 				}
 
 				term, isLeader := kv.rf.GetState()

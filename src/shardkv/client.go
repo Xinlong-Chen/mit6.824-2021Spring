@@ -43,7 +43,6 @@ type Clerk struct {
 	config   shardctrler.Config
 	make_end func(string) *labrpc.ClientEnd
 	// You will have to modify this struct.
-	leaderId int
 	seqId    int64
 	clientId int64
 }
@@ -62,6 +61,9 @@ func MakeClerk(ctrlers []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 	ck.sm = shardctrler.MakeClerk(ctrlers)
 	ck.make_end = make_end
 	// You'll have to add code here.
+	ck.clientId = nrand()
+	ck.seqId = 0
+	ck.config = ck.sm.Query(-1)
 	return ck
 }
 
