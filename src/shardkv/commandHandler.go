@@ -4,10 +4,12 @@ import "6.824/raft"
 
 // Handler
 func (kv *ShardKV) Command(args *CmdArgs, reply *CmdReply) {
+	defer Debug(dTrace, "G%+v {S%+v} args: %+v reply: %+v", kv.gid, kv.me, args, reply)
+
 	kv.mu.Lock()
 	shardID := key2shard(args.Key)
 	if !kv.canServe(shardID) {
-		Debug(dWarn, "G%+v {S%+v} shard %d is %+v", kv.gid, kv.me, shardID, kv.shards[shardID])
+		Debug(dWarn, "G%+v {S%+v} shard %d is %+v, can't servering(%+v)", kv.gid, kv.me, shardID, kv.shards[shardID], kv.currentConfig.Shards[shardID])
 		reply.Err = ErrWrongGroup
 		kv.mu.Unlock()
 		return
@@ -26,7 +28,6 @@ func (kv *ShardKV) Command(args *CmdArgs, reply *CmdReply) {
 }
 
 func (kv *ShardKV) canServe(shardID int) bool {
-
 	return kv.currentConfig.Shards[shardID] == kv.gid && (kv.shards[shardID].Status == Serving || kv.shards[shardID].Status == GCing)
 }
 

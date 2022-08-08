@@ -91,3 +91,21 @@ func (rf *Raft) toCommit() {
 
 	utils.Debug(utils.DCommit, "S%d don't have half replicated from %v to %v now", rf.me, rf.commitIndex, rf.lastLogIndex())
 }
+
+func (rf *Raft) HasLogInCurrentTerm() bool {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	for i := len(rf.log) - 1; i > 0; i-- {
+		if rf.log[i].Term > rf.currentTerm {
+			continue
+		}
+		if rf.log[i].Term == rf.currentTerm {
+			return true
+		}
+		if rf.log[i].Term < rf.currentTerm {
+			break
+		}
+	}
+	return false
+}

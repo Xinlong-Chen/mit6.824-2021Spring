@@ -44,7 +44,7 @@ func (kv *ShardKV) Kill() {
 	kv.mu.Lock()
 	defer kv.mu.Unlock()
 	//fmt.Printf("---kill\n")
-	// kv.doSnapshot(kv.lastApplied)
+	kv.doSnapshot(kv.lastApplied)
 	kv.rf.Kill()
 	Debug(dWarn, "G%+v {S%+v} close shards: %+v config: %+v", kv.gid, kv.me, kv.shards, kv.currentConfig)
 }
