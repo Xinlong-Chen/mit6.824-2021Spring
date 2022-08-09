@@ -84,7 +84,7 @@ func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
 	}
 
 	t0 := time.Now()
-	for time.Since(t0).Seconds() < 10 {
+	for time.Since(t0).Seconds() < 15 {
 		shard := key2shard(key)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
@@ -107,7 +107,7 @@ func (ck *Clerk) sendCmd(key string, value string, OpType OPType) string {
 		ck.config = ck.sm.Query(-1)
 	}
 
-	panic("10s not reply")
+	panic("15s not reply")
 	return ""
 }
 

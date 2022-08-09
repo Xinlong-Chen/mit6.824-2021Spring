@@ -55,10 +55,11 @@ func (kv *ShardKV) GetShardsData(args *PullDataArgs, reply *PullDataReply) {
 		return
 	}
 	kv.mu.Lock()
-	defer kv.mu.Unlock()
 
 	if kv.currentConfig.Num < args.ConfNum {
 		reply.Err = ErrNotReady
+		kv.mu.Unlock()
+		kv.configureAction()
 		return
 	}
 
@@ -68,6 +69,7 @@ func (kv *ShardKV) GetShardsData(args *PullDataArgs, reply *PullDataReply) {
 	}
 
 	reply.ConfNum, reply.Err = args.ConfNum, OK
+	kv.mu.Unlock()
 }
 
 func (kv *ShardKV) applyInsertShards(shardsInfo *PullDataReply) *OpResp {
